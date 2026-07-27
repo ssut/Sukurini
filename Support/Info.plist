@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>Sukurini</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>me.ssut.sukurini</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Sukurini</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Sukurini watches your screenshot folder to show and share new screenshots.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Sukurini watches your screenshot folder to show and share new screenshots.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Sukurini watches your screenshot folder to show and share new screenshots.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Sukurini</string>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/ssut/Sukurini/gh-pages/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>kDvnps/cwaiQJmh6JhjAzWNleWbZtlhA016cSuC6F4Y=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
+</dict>
+</plist>

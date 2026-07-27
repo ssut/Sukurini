@@ -1,0 +1,9 @@
+.build/
+dist/
+.DS_Store
+*.xcodeproj
+.swiftpm/
+
+**/GoogleService-Info.plist
+__pycache__/
+*.pyc

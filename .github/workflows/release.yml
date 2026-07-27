@@ -1,0 +1,245 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and publish
+        required: true
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  APP: Sukurini
+  APPCAST_BRANCH: gh-pages
+  APPCAST_FILE: appcast.xml
+
+jobs:
+  release:
+    name: release-macos
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Resolve version and channel
+        id: version
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          SHORT="${TAG#v}"
+          if [ -z "$SHORT" ]; then
+            echo "version status=fail reason=empty_tag"
+            exit 1
+          fi
+          case "$SHORT" in
+            *-*)
+              CHANNEL=preview
+              PRERELEASE=true
+              ;;
+            *)
+              CHANNEL=stable
+              PRERELEASE=false
+              ;;
+          esac
+          BUILD="${GITHUB_RUN_NUMBER}"
+          {
+            echo "tag=$TAG"
+            echo "short=$SHORT"
+            echo "build=$BUILD"
+            echo "channel=$CHANNEL"
+            echo "prerelease=$PRERELEASE"
+            echo "archive=${APP}-${SHORT}.zip"
+          } >> "$GITHUB_OUTPUT"
+          echo "version resolved tag=$TAG short=$SHORT build=$BUILD channel=$CHANNEL prerelease=$PRERELEASE"
+
+      - name: Verify signing configuration
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+        run: |
+          set -euo pipefail
+          PUBLIC_KEY="$(plutil -extract SUPublicEDKey raw Support/Info.plist 2>/dev/null || true)"
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "signing status=fail reason=public_key_empty detail=set_SUPublicEDKey_in_Support/Info.plist"
+            exit 1
+          fi
+          if [ -z "${SPARKLE_PRIVATE_KEY:-}" ]; then
+            echo "signing status=fail reason=private_key_secret_missing detail=set_SPARKLE_ED_PRIVATE_KEY_secret"
+            exit 1
+          fi
+          if [ -z "${PLIST_B64:-}" ]; then
+            echo "signing status=fail reason=firebase_secret_missing detail=set_GOOGLE_SERVICE_INFO_PLIST_BASE64_secret"
+            exit 1
+          fi
+          python3 Scripts/verify-signing-key.py --info-plist Support/Info.plist
+          echo "signing status=ok public_key_length=${#PUBLIC_KEY}"
+
+      - name: Select Xcode
+        id: xcode
+        run: |
+          set -euo pipefail
+          XCODE_APP="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$XCODE_APP" ]; then
+            XCODE_APP=/Applications/Xcode.app
+            echo "xcode resolve=fallback path=$XCODE_APP"
+          else
+            echo "xcode resolve=latest-major-26 path=$XCODE_APP"
+          fi
+          sudo xcode-select -s "$XCODE_APP"
+          XCODE_VERSION="$(xcodebuild -version | head -1 | awk '{print $2}')"
+          echo "version=$XCODE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "toolchain xcode=$XCODE_VERSION swift=$(swift -version 2>&1 | head -1)"
+
+      - name: Restore SwiftPM cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            .build
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-xcode${{ steps.xcode.outputs.version }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-xcode${{ steps.xcode.outputs.version }}-
+
+      - name: Write Firebase config
+        env:
+          PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$PLIST_B64" | base64 -d > Support/GoogleService-Info.plist
+          plutil -lint Support/GoogleService-Info.plist > /dev/null
+          echo "firebase-config status=written bytes=$(wc -c < Support/GoogleService-Info.plist)"
+
+      - name: Stamp version
+        run: |
+          set -euo pipefail
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.short }}" Support/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.build }}" Support/Info.plist
+          echo "stamped short=$(plutil -extract CFBundleShortVersionString raw Support/Info.plist) build=$(plutil -extract CFBundleVersion raw Support/Info.plist)"
+
+      - name: Build and sign
+        run: |
+          set -euo pipefail
+          make sign
+          echo "bundle status=signed identity=adhoc"
+
+      - name: Verify app bundle
+        run: |
+          set -euo pipefail
+          APP_PATH="dist/${APP}.app"
+          for required in \
+            "$APP_PATH/Contents/MacOS/${APP}" \
+            "$APP_PATH/Contents/Resources/GoogleService-Info.plist" \
+            "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle" \
+            "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"; do
+            if [ ! -e "$required" ]; then
+              echo "verify status=fail reason=missing path=$required"
+              exit 1
+            fi
+          done
+          codesign --verify --deep --strict "$APP_PATH"
+          FEED="$(plutil -extract SUFeedURL raw "$APP_PATH/Contents/Info.plist")"
+          SHORT="$(plutil -extract CFBundleShortVersionString raw "$APP_PATH/Contents/Info.plist")"
+          BUILD="$(plutil -extract CFBundleVersion raw "$APP_PATH/Contents/Info.plist")"
+          if [ "$SHORT" != "${{ steps.version.outputs.short }}" ]; then
+            echo "verify status=fail reason=version_mismatch bundle=$SHORT expected=${{ steps.version.outputs.short }}"
+            exit 1
+          fi
+          echo "verify status=ok short=$SHORT build=$BUILD feed=$FEED archs=$(lipo -archs "$APP_PATH/Contents/MacOS/${APP}")"
+
+      - name: Package archive
+        run: |
+          set -euo pipefail
+          ARCHIVE="${{ steps.version.outputs.archive }}"
+          ditto -c -k --sequesterRsrc --keepParent "dist/${APP}.app" "$ARCHIVE"
+          echo "package status=ok archive=$ARCHIVE bytes=$(wc -c < "$ARCHIVE")"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.version.outputs.tag }}"
+          ARCHIVE="${{ steps.version.outputs.archive }}"
+          FLAGS="--generate-notes --title $TAG"
+          if [ "${{ steps.version.outputs.prerelease }}" = "true" ]; then
+            FLAGS="$FLAGS --prerelease"
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ARCHIVE" --clobber
+            echo "release status=updated tag=$TAG"
+          else
+            # shellcheck disable=SC2086
+            gh release create "$TAG" "$ARCHIVE" $FLAGS
+            echo "release status=created tag=$TAG prerelease=${{ steps.version.outputs.prerelease }}"
+          fi
+
+      - name: Update appcast
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.version.outputs.tag }}"
+          ARCHIVE="${{ steps.version.outputs.archive }}"
+          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          MIN_SYSTEM="$(plutil -extract LSMinimumSystemVersion raw Support/Info.plist)"
+
+          if git clone --branch "$APPCAST_BRANCH" --depth 1 "$REMOTE" appcast-work 2>/dev/null; then
+            echo "appcast-branch status=existing name=$APPCAST_BRANCH"
+          else
+            git clone --depth 1 "$REMOTE" appcast-work
+            git -C appcast-work checkout --orphan "$APPCAST_BRANCH"
+            git -C appcast-work rm -rf . > /dev/null 2>&1 || true
+            echo "appcast-branch status=created name=$APPCAST_BRANCH"
+          fi
+
+          python3 Scripts/make-appcast.py \
+            --appcast "appcast-work/${APPCAST_FILE}" \
+            --archive "$ARCHIVE" \
+            --download-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${ARCHIVE}" \
+            --version "${{ steps.version.outputs.build }}" \
+            --short-version "${{ steps.version.outputs.short }}" \
+            --channel "${{ steps.version.outputs.channel }}" \
+            --min-system "$MIN_SYSTEM" \
+            --release-notes-url "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" \
+            --sign-update ".build/artifacts/sparkle/Sparkle/bin/sign_update" \
+            --private-key-file "-" \
+            --feed-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${APPCAST_BRANCH}/${APPCAST_FILE}"
+
+          git -C appcast-work config user.name "github-actions[bot]"
+          git -C appcast-work config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C appcast-work add "$APPCAST_FILE"
+          if git -C appcast-work diff --cached --quiet; then
+            echo "appcast status=unchanged"
+          else
+            git -C appcast-work commit -m "appcast: $TAG (${{ steps.version.outputs.channel }})"
+            git -C appcast-work push origin "$APPCAST_BRANCH"
+            echo "appcast status=published branch=$APPCAST_BRANCH"
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "### ${APP} ${{ steps.version.outputs.short }}"
+            echo ""
+            echo "- channel: \`${{ steps.version.outputs.channel }}\`"
+            echo "- pre-release: \`${{ steps.version.outputs.prerelease }}\`"
+            echo "- build: \`${{ steps.version.outputs.build }}\`"
+            echo "- archive: \`${{ steps.version.outputs.archive }}\`"
+            echo "- feed: \`https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${APPCAST_BRANCH}/${APPCAST_FILE}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

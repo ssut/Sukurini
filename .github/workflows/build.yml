@@ -1,0 +1,164 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  APP: Sukurini
+  ARCH: arm64
+
+jobs:
+  build:
+    name: build-macos
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Select Xcode
+        id: xcode
+        run: |
+          set -euo pipefail
+          XCODE_APP="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$XCODE_APP" ]; then
+            XCODE_APP=/Applications/Xcode.app
+            echo "xcode resolve=fallback path=$XCODE_APP"
+          else
+            echo "xcode resolve=latest-major-26 path=$XCODE_APP"
+          fi
+          sudo xcode-select -s "$XCODE_APP"
+          XCODE_VERSION="$(xcodebuild -version | head -1 | awk '{print $2}')"
+          SWIFT_VERSION="$(swift -version 2>&1 | head -1)"
+          echo "version=$XCODE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "toolchain xcode=$XCODE_VERSION swift=$SWIFT_VERSION"
+
+      - name: Restore SwiftPM cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            .build
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-xcode${{ steps.xcode.outputs.version }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-xcode${{ steps.xcode.outputs.version }}-
+
+      - name: Write Firebase config
+        id: firebase
+        env:
+          PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PLIST_B64:-}" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "firebase-config status=absent reason=secret_unavailable event=${{ github.event_name }}"
+            echo "firebase-config note=compile_only_run bundling=skipped"
+            exit 0
+          fi
+          printf '%s' "$PLIST_B64" | base64 -d > Support/GoogleService-Info.plist
+          plutil -lint Support/GoogleService-Info.plist > /dev/null
+          BUNDLE_ID="$(plutil -extract BUNDLE_ID raw Support/GoogleService-Info.plist)"
+          EXPECTED_ID="$(plutil -extract CFBundleIdentifier raw Support/Info.plist)"
+          if [ "$BUNDLE_ID" != "$EXPECTED_ID" ]; then
+            echo "firebase-config status=fail reason=bundle_id_mismatch config=$BUNDLE_ID app=$EXPECTED_ID"
+            exit 1
+          fi
+          echo "available=true" >> "$GITHUB_OUTPUT"
+          echo "firebase-config status=written bytes=$(wc -c < Support/GoogleService-Info.plist) bundle_id=$BUNDLE_ID"
+
+      - name: Resolve dependencies
+        run: |
+          set -euo pipefail
+          swift package resolve
+          echo "dependencies status=resolved"
+          swift package show-dependencies --format flatlist 2>/dev/null | head -20 || true
+
+      - name: Compile
+        run: |
+          set -euo pipefail
+          echo "compile configuration=release arch=${ARCH} host=$(uname -m) start"
+          swift build -c release --arch "${ARCH}"
+          echo "compile configuration=release status=ok bin=$(swift build -c release --arch "${ARCH}" --show-bin-path)"
+
+      - name: Bundle and sign
+        if: steps.firebase.outputs.available == 'true'
+        run: |
+          set -euo pipefail
+          make sign
+          echo "bundle status=signed identity=adhoc"
+
+      - name: Verify app bundle
+        if: steps.firebase.outputs.available == 'true'
+        run: |
+          set -euo pipefail
+          APP_PATH="dist/${APP}.app"
+          for required in \
+            "$APP_PATH/Contents/MacOS/${APP}" \
+            "$APP_PATH/Contents/Info.plist" \
+            "$APP_PATH/Contents/Resources/AppIcon.icns" \
+            "$APP_PATH/Contents/Resources/GoogleService-Info.plist" \
+            "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle" \
+            "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate" \
+            "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app" \
+            "$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"; do
+            if [ ! -e "$required" ]; then
+              echo "verify status=fail reason=missing path=$required"
+              exit 1
+            fi
+          done
+          test -x "$APP_PATH/Contents/MacOS/${APP}" || { echo "verify status=fail reason=binary_not_executable"; exit 1; }
+          plutil -lint "$APP_PATH/Contents/Info.plist" > /dev/null
+          codesign --verify --strict --verbose=2 "$APP_PATH"
+          VERSION="$(plutil -extract CFBundleShortVersionString raw "$APP_PATH/Contents/Info.plist")"
+          BUILD_NUM="$(plutil -extract CFBundleVersion raw "$APP_PATH/Contents/Info.plist")"
+          ARCHS="$(lipo -archs "$APP_PATH/Contents/MacOS/${APP}")"
+          if [ "$ARCHS" != "${ARCH}" ]; then
+            echo "verify status=fail reason=unexpected_archs expected=${ARCH} actual=$ARCHS"
+            exit 1
+          fi
+          MIN_OS="$(plutil -extract LSMinimumSystemVersion raw "$APP_PATH/Contents/Info.plist")"
+          echo "verify status=ok version=$VERSION build=$BUILD_NUM archs=$ARCHS min_os=$MIN_OS"
+
+      - name: Package artifact
+        id: package
+        if: steps.firebase.outputs.available == 'true'
+        run: |
+          set -euo pipefail
+          SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          ARCHIVE="${APP}-${SHORT_SHA}.zip"
+          ditto -c -k --sequesterRsrc --keepParent "dist/${APP}.app" "$ARCHIVE"
+          echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
+          echo "package status=ok archive=$ARCHIVE bytes=$(wc -c < "$ARCHIVE")"
+
+      - name: Upload artifact
+        if: steps.firebase.outputs.available == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.APP }}-${{ github.sha }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Summary
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "### ${APP} build"
+            echo ""
+            echo "- xcode: \`${{ steps.xcode.outputs.version }}\`"
+            echo "- firebase config: \`${{ steps.firebase.outputs.available == 'true' && 'bundled' || 'absent (compile-only)' }}\`"
+            echo "- artifact: \`${{ steps.package.outputs.archive || 'none' }}\`"
+            echo "- commit: \`${GITHUB_SHA}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
