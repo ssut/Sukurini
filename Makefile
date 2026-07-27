@@ -2,6 +2,8 @@ APP := Sukurini
 BUNDLE_ID := com.suhunhan.sukurini
 DIST := dist/$(APP).app
 IDENTITY ?= -
+VERSION := $(shell tr -d '[:space:]' < VERSION 2>/dev/null)
+BUILD ?= 0
 ARCH := arm64
 SWIFT_RELEASE := swift build -c release --arch $(ARCH)
 FIXTURE_SRC := /System/Library/Desktop Pictures/Mac Blue.heic
@@ -28,6 +30,10 @@ bundle: build
 	cp -f $(GOOGLE_PLIST) $(DIST)/Contents/Resources/GoogleService-Info.plist
 	ditto "$$($(SWIFT_RELEASE) --show-bin-path)/$(SPARKLE_NAME)" $(SPARKLE_DEST)
 	printf 'APPL????' > $(DIST)/Contents/PkgInfo
+	@test -n "$(VERSION)" || { echo "version missing, VERSION file is empty or absent"; exit 1; }
+	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" $(DIST)/Contents/Info.plist
+	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(BUILD)" $(DIST)/Contents/Info.plist
+	@echo "version stamped short=$(VERSION) build=$(BUILD)"
 	@ARCHS="$$(lipo -archs $(DIST)/Contents/MacOS/$(APP))"; \
 	test "$$ARCHS" = "$(ARCH)" || { echo "arch check failed expected=$(ARCH) actual=$$ARCHS"; exit 1; }; \
 	echo "arch check ok archs=$$ARCHS"

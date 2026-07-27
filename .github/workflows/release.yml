@@ -2,12 +2,17 @@ name: release
 
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths: ['VERSION']
   workflow_dispatch:
     inputs:
-      tag:
-        description: Existing tag to build and publish
-        required: true
+      version:
+        description: Version to build and publish (defaults to the VERSION file)
+        required: false
+      force:
+        description: Republish even if the release already exists
+        type: boolean
+        default: false
 
 concurrency:
   group: release
@@ -22,28 +27,51 @@ env:
   APPCAST_FILE: appcast.xml
 
 jobs:
-  release:
-    name: release-macos
-    runs-on: macos-26
-    timeout-minutes: 60
+  check:
+    name: check-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      proceed: ${{ steps.resolve.outputs.proceed }}
+      short: ${{ steps.resolve.outputs.short }}
+      tag: ${{ steps.resolve.outputs.tag }}
+      channel: ${{ steps.resolve.outputs.channel }}
+      prerelease: ${{ steps.resolve.outputs.prerelease }}
+      archive: ${{ steps.resolve.outputs.archive }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
-          fetch-depth: 0
 
-      - name: Resolve version and channel
-        id: version
+      - name: Resolve version
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          FORCE: ${{ github.event.inputs.force }}
         run: |
           set -euo pipefail
-          TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          SHORT="${TAG#v}"
+          if [ -n "${INPUT_VERSION:-}" ]; then
+            SHORT="$(printf '%s' "$INPUT_VERSION" | tr -d '[:space:]')"
+            SOURCE=workflow_input
+          else
+            if [ ! -f VERSION ]; then
+              echo "version status=fail reason=version_file_missing path=VERSION"
+              exit 1
+            fi
+            SHORT="$(tr -d '[:space:]' < VERSION)"
+            SOURCE=version_file
+          fi
+
           if [ -z "$SHORT" ]; then
-            echo "version status=fail reason=empty_tag"
+            echo "version status=fail reason=version_empty source=$SOURCE"
             exit 1
           fi
+          if ! [[ "$SHORT" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then
+            echo "version status=fail reason=version_malformed value=$SHORT expected=MAJOR.MINOR.PATCH[-prerelease]"
+            exit 1
+          fi
+
           case "$SHORT" in
             *-*)
               CHANNEL=preview
@@ -54,16 +82,40 @@ jobs:
               PRERELEASE=false
               ;;
           esac
-          BUILD="${GITHUB_RUN_NUMBER}"
+
+          TAG="v${SHORT}"
+          PROCEED=true
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if [ "${FORCE:-false}" = "true" ]; then
+              echo "version note=release_exists action=republish_forced tag=$TAG"
+            else
+              PROCEED=false
+              echo "version status=skip reason=release_already_exists tag=$TAG"
+            fi
+          fi
+
           {
-            echo "tag=$TAG"
+            echo "proceed=$PROCEED"
             echo "short=$SHORT"
-            echo "build=$BUILD"
+            echo "tag=$TAG"
             echo "channel=$CHANNEL"
             echo "prerelease=$PRERELEASE"
             echo "archive=${APP}-${SHORT}.zip"
           } >> "$GITHUB_OUTPUT"
-          echo "version resolved tag=$TAG short=$SHORT build=$BUILD channel=$CHANNEL prerelease=$PRERELEASE"
+          echo "version resolved source=$SOURCE short=$SHORT tag=$TAG channel=$CHANNEL prerelease=$PRERELEASE proceed=$PROCEED"
+
+  release:
+    name: release-macos
+    needs: check
+    if: needs.check.outputs.proceed == 'true'
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Verify signing configuration
         env:
@@ -71,11 +123,6 @@ jobs:
           PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
         run: |
           set -euo pipefail
-          PUBLIC_KEY="$(plutil -extract SUPublicEDKey raw Support/Info.plist 2>/dev/null || true)"
-          if [ -z "$PUBLIC_KEY" ]; then
-            echo "signing status=fail reason=public_key_empty detail=set_SUPublicEDKey_in_Support/Info.plist"
-            exit 1
-          fi
           if [ -z "${SPARKLE_PRIVATE_KEY:-}" ]; then
             echo "signing status=fail reason=private_key_secret_missing detail=set_SPARKLE_ED_PRIVATE_KEY_secret"
             exit 1
@@ -85,7 +132,6 @@ jobs:
             exit 1
           fi
           python3 Scripts/verify-signing-key.py --info-plist Support/Info.plist
-          echo "signing status=ok public_key_length=${#PUBLIC_KEY}"
 
       - name: Select Xcode
         id: xcode
@@ -122,18 +168,13 @@ jobs:
           plutil -lint Support/GoogleService-Info.plist > /dev/null
           echo "firebase-config status=written bytes=$(wc -c < Support/GoogleService-Info.plist)"
 
-      - name: Stamp version
-        run: |
-          set -euo pipefail
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.short }}" Support/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.build }}" Support/Info.plist
-          echo "stamped short=$(plutil -extract CFBundleShortVersionString raw Support/Info.plist) build=$(plutil -extract CFBundleVersion raw Support/Info.plist)"
-
       - name: Build and sign
+        env:
+          BUILD: ${{ github.run_number }}
         run: |
           set -euo pipefail
           make sign
-          echo "bundle status=signed identity=adhoc"
+          echo "bundle status=signed identity=adhoc build=$BUILD"
 
       - name: Verify app bundle
         run: |
@@ -150,19 +191,18 @@ jobs:
             fi
           done
           codesign --verify --deep --strict "$APP_PATH"
-          FEED="$(plutil -extract SUFeedURL raw "$APP_PATH/Contents/Info.plist")"
           SHORT="$(plutil -extract CFBundleShortVersionString raw "$APP_PATH/Contents/Info.plist")"
-          BUILD="$(plutil -extract CFBundleVersion raw "$APP_PATH/Contents/Info.plist")"
-          if [ "$SHORT" != "${{ steps.version.outputs.short }}" ]; then
-            echo "verify status=fail reason=version_mismatch bundle=$SHORT expected=${{ steps.version.outputs.short }}"
+          BUILD_NUM="$(plutil -extract CFBundleVersion raw "$APP_PATH/Contents/Info.plist")"
+          if [ "$SHORT" != "${{ needs.check.outputs.short }}" ]; then
+            echo "verify status=fail reason=version_mismatch bundle=$SHORT expected=${{ needs.check.outputs.short }}"
             exit 1
           fi
-          echo "verify status=ok short=$SHORT build=$BUILD feed=$FEED archs=$(lipo -archs "$APP_PATH/Contents/MacOS/${APP}")"
+          echo "verify status=ok short=$SHORT build=$BUILD_NUM archs=$(lipo -archs "$APP_PATH/Contents/MacOS/${APP}")"
 
       - name: Package archive
         run: |
           set -euo pipefail
-          ARCHIVE="${{ steps.version.outputs.archive }}"
+          ARCHIVE="${{ needs.check.outputs.archive }}"
           ditto -c -k --sequesterRsrc --keepParent "dist/${APP}.app" "$ARCHIVE"
           echo "package status=ok archive=$ARCHIVE bytes=$(wc -c < "$ARCHIVE")"
 
@@ -171,19 +211,18 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="${{ steps.version.outputs.tag }}"
-          ARCHIVE="${{ steps.version.outputs.archive }}"
-          FLAGS="--generate-notes --title $TAG"
-          if [ "${{ steps.version.outputs.prerelease }}" = "true" ]; then
-            FLAGS="$FLAGS --prerelease"
-          fi
+          TAG="${{ needs.check.outputs.tag }}"
+          ARCHIVE="${{ needs.check.outputs.archive }}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$ARCHIVE" --clobber
-            echo "release status=updated tag=$TAG"
+            echo "release status=asset_replaced tag=$TAG"
           else
-            # shellcheck disable=SC2086
-            gh release create "$TAG" "$ARCHIVE" $FLAGS
-            echo "release status=created tag=$TAG prerelease=${{ steps.version.outputs.prerelease }}"
+            FLAGS=(--target "$GITHUB_SHA" --title "$TAG" --generate-notes)
+            if [ "${{ needs.check.outputs.prerelease }}" = "true" ]; then
+              FLAGS+=(--prerelease)
+            fi
+            gh release create "$TAG" "$ARCHIVE" "${FLAGS[@]}"
+            echo "release status=created tag=$TAG prerelease=${{ needs.check.outputs.prerelease }} commit=$GITHUB_SHA"
           fi
 
       - name: Update appcast
@@ -192,17 +231,18 @@ jobs:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
         run: |
           set -euo pipefail
-          TAG="${{ steps.version.outputs.tag }}"
-          ARCHIVE="${{ steps.version.outputs.archive }}"
+          TAG="${{ needs.check.outputs.tag }}"
+          ARCHIVE="${{ needs.check.outputs.archive }}"
           REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           MIN_SYSTEM="$(plutil -extract LSMinimumSystemVersion raw Support/Info.plist)"
 
           if git clone --branch "$APPCAST_BRANCH" --depth 1 "$REMOTE" appcast-work 2>/dev/null; then
             echo "appcast-branch status=existing name=$APPCAST_BRANCH"
           else
-            git clone --depth 1 "$REMOTE" appcast-work
-            git -C appcast-work checkout --orphan "$APPCAST_BRANCH"
-            git -C appcast-work rm -rf . > /dev/null 2>&1 || true
+            mkdir -p appcast-work
+            git -C appcast-work init -q
+            git -C appcast-work checkout -q -b "$APPCAST_BRANCH"
+            git -C appcast-work remote add origin "$REMOTE"
             echo "appcast-branch status=created name=$APPCAST_BRANCH"
           fi
 
@@ -210,9 +250,9 @@ jobs:
             --appcast "appcast-work/${APPCAST_FILE}" \
             --archive "$ARCHIVE" \
             --download-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${ARCHIVE}" \
-            --version "${{ steps.version.outputs.build }}" \
-            --short-version "${{ steps.version.outputs.short }}" \
-            --channel "${{ steps.version.outputs.channel }}" \
+            --version "${{ github.run_number }}" \
+            --short-version "${{ needs.check.outputs.short }}" \
+            --channel "${{ needs.check.outputs.channel }}" \
             --min-system "$MIN_SYSTEM" \
             --release-notes-url "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" \
             --sign-update ".build/artifacts/sparkle/Sparkle/bin/sign_update" \
@@ -225,7 +265,7 @@ jobs:
           if git -C appcast-work diff --cached --quiet; then
             echo "appcast status=unchanged"
           else
-            git -C appcast-work commit -m "appcast: $TAG (${{ steps.version.outputs.channel }})"
+            git -C appcast-work commit -m "appcast: $TAG (${{ needs.check.outputs.channel }})"
             git -C appcast-work push origin "$APPCAST_BRANCH"
             echo "appcast status=published branch=$APPCAST_BRANCH"
           fi
@@ -235,11 +275,11 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo "### ${APP} ${{ steps.version.outputs.short }}"
+            echo "### ${APP} ${{ needs.check.outputs.short }}"
             echo ""
-            echo "- channel: \`${{ steps.version.outputs.channel }}\`"
-            echo "- pre-release: \`${{ steps.version.outputs.prerelease }}\`"
-            echo "- build: \`${{ steps.version.outputs.build }}\`"
-            echo "- archive: \`${{ steps.version.outputs.archive }}\`"
+            echo "- channel: \`${{ needs.check.outputs.channel }}\`"
+            echo "- pre-release: \`${{ needs.check.outputs.prerelease }}\`"
+            echo "- build: \`${{ github.run_number }}\`"
+            echo "- release: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${{ needs.check.outputs.tag }}"
             echo "- feed: \`https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${APPCAST_BRANCH}/${APPCAST_FILE}\`"
           } >> "$GITHUB_STEP_SUMMARY"
