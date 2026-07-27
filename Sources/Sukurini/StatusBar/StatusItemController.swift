@@ -308,5 +308,7 @@ extension StatusItemController: NSDraggingSource {
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         store.setDragHold(false)
         Log.drag.info("drag ended operation=\(operation.rawValue, privacy: .public) copy=\(operation.contains(.copy), privacy: .public)")
+        guard !operation.isEmpty else { return }
+        Telemetry.log(.screenshotCopied, ["source": "menu_bar", "method": "drag"])
     }
 }

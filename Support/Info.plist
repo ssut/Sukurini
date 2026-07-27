@@ -36,6 +36,10 @@
 	<string>Sukurini watches your screenshot folder to show and share new screenshots.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Sukurini</string>
+	<key>GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED</key>
+	<false/>
+	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS</key>
+	<false/>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/ssut/Sukurini/gh-pages/appcast.xml</string>
 	<key>SUPublicEDKey</key>

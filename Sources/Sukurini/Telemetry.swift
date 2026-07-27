@@ -3,19 +3,38 @@ import FirebaseAnalytics
 import FirebaseCore
 import FirebaseCrashlytics
 
+enum TelemetryEvent: String {
+    case appLaunch = "app_launch"
+    case screenshotDetected = "screenshot_detected"
+    case settingChanged = "setting_changed"
+    case screenshotCopied = "screenshot_copied"
+    case galleryOpened = "gallery_opened"
+    case gallerySearched = "gallery_searched"
+    case gallerySearchSelected = "gallery_search_selected"
+    case galleryCopied = "gallery_copied"
+}
+
 enum Telemetry {
     private static let configResource = "GoogleService-Info"
     private static let configExtension = "plist"
-    private static let launchEvent = "app_launch"
+    private static let startReason = "start"
 
+    private static let lock = NSLock()
     private static var didAttemptStart = false
+    private static var isConfigured = false
+    private static var isCollecting = false
+    private static var settingObserver: NSObjectProtocol?
 
     static func start() {
-        guard !didAttemptStart else {
+        lock.lock()
+        let alreadyAttempted = didAttemptStart
+        didAttemptStart = true
+        lock.unlock()
+
+        guard !alreadyAttempted else {
             Log.telemetry.debug("start skipped reason=already_attempted")
             return
         }
-        didAttemptStart = true
 
         guard Thread.isMainThread else {
             Log.telemetry.error("start skipped reason=not_main_thread")
@@ -62,9 +81,119 @@ enum Telemetry {
         }
 
         Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
-        Analytics.setAnalyticsCollectionEnabled(true)
-        Analytics.logEvent(launchEvent, parameters: nil)
 
-        Log.telemetry.info("started project=\(options.projectID ?? "unknown", privacy: .public) crashlytics=enabled analytics=enabled")
+        Analytics.setUserID(nil)
+        Analytics.setConsent([
+            .analyticsStorage: .granted,
+            .adStorage: .denied,
+            .adUserData: .denied,
+            .adPersonalization: .denied
+        ])
+
+        lock.lock()
+        isConfigured = true
+        lock.unlock()
+
+        observeSetting()
+        applyCollectionSetting(reason: Self.startReason)
+
+        Log.telemetry.info("started project=\(options.projectID ?? "unknown", privacy: .public) crashlytics=enabled analytics=\(AppSettings.shared.analyticsEnabled, privacy: .public)")
+
+        logLaunch()
+    }
+
+    static func log(_ event: TelemetryEvent, _ parameters: [String: String] = [:]) {
+        lock.lock()
+        let allowed = isCollecting
+        lock.unlock()
+
+        guard allowed else {
+            Log.telemetry.debug("event dropped name=\(event.rawValue, privacy: .public) reason=collection_off")
+            return
+        }
+
+        Analytics.logEvent(event.rawValue, parameters: parameters.isEmpty ? nil : parameters)
+        Log.telemetry.debug("event logged name=\(event.rawValue, privacy: .public) params=\(describe(parameters), privacy: .public)")
+    }
+
+    static func bucket(_ value: Int) -> String {
+        switch value {
+        case ..<1: return "0"
+        case 1: return "1"
+        case 2...5: return "2_5"
+        case 6...10: return "6_10"
+        case 11...25: return "11_25"
+        case 26...50: return "26_50"
+        case 51...100: return "51_100"
+        case 101...500: return "101_500"
+        default: return "500_plus"
+        }
+    }
+
+    static func flag(_ value: Bool) -> String {
+        value ? "on" : "off"
+    }
+
+    private static func observeSetting() {
+        guard settingObserver == nil else { return }
+        settingObserver = NotificationCenter.default.addObserver(
+            forName: .sukuriniAnalyticsEnabledChanged,
+            object: nil,
+            queue: .main
+        ) { _ in
+            applyCollectionSetting(reason: "settings")
+        }
+        Log.telemetry.debug("observing analytics setting")
+    }
+
+    private static func applyCollectionSetting(reason: String) {
+        let enabled = AppSettings.shared.analyticsEnabled
+
+        lock.lock()
+        let configured = isConfigured
+        let wasCollecting = isCollecting
+        isCollecting = configured && enabled
+        lock.unlock()
+
+        guard configured else {
+            Log.telemetry.debug("collection change ignored reason=not_configured desired=\(enabled, privacy: .public)")
+            return
+        }
+
+        Analytics.setAnalyticsCollectionEnabled(enabled)
+
+        if !enabled, wasCollecting {
+            Analytics.resetAnalyticsData()
+            Log.telemetry.notice("analytics data reset after opt out")
+        }
+
+        Log.telemetry.info("analytics collection applied value=\(enabled, privacy: .public) reason=\(reason, privacy: .public)")
+
+        guard enabled, !wasCollecting, reason != Self.startReason else { return }
+        log(.settingChanged, ["setting": "analytics", "state": flag(true)])
+    }
+
+    private static func logLaunch() {
+        let settings = AppSettings.shared
+        log(.appLaunch, [
+            "first_launch": flag(settings.isFirstLaunch),
+            "launches": bucket(settings.launchCount),
+            "language": LocalizationCenter.shared.language.rawValue,
+            "folders": bucket(settings.folders.count),
+            "ocr": flag(settings.ocrEnabled),
+            "semantic": flag(settings.semanticSearchEnabled),
+            "webp": flag(settings.webpConversionEnabled),
+            "organize": flag(settings.organizeEnabled),
+            "dock": flag(settings.alwaysShowInDock),
+            "hotkey": flag(settings.galleryHotKey != nil)
+        ])
+    }
+
+    private static func describe(_ parameters: [String: String]) -> String {
+        guard !parameters.isEmpty else { return "none" }
+        return parameters
+            .sorted { $0.key < $1.key }
+            .map { "\($0.key)=\($0.value)" }
+            .joined(separator: " ")
     }
 }

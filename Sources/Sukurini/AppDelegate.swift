@@ -139,7 +139,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Log.app.info("hotkey triggered galleryVisible=\(self.gallery.isVisible, privacy: .public)")
             self.gallery.toggle(
                 wasVisibleAtPress: self.gallery.isVisible,
-                statusButton: self.statusItem.statusButton
+                statusButton: self.statusItem.statusButton,
+                source: .hotkey
             )
         }
         hotKeyCenter.start()
@@ -310,6 +311,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let arrivals = change.arrivals
             guard !arrivals.isEmpty else { return }
             Log.app.info("new screenshots detected count=\(arrivals.count, privacy: .public)")
+            Telemetry.log(.screenshotDetected, ["count": Telemetry.bucket(arrivals.count)])
             self.statusItem.playRipple()
         }
     }
@@ -366,7 +368,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             Log.app.info("post-onboarding gallery presenting items=\(self.store.items.count, privacy: .public)")
-            self.gallery.show(relativeTo: self.statusItem.statusButton)
+            self.gallery.show(relativeTo: self.statusItem.statusButton, source: .onboarding)
         }
     }
 
@@ -387,7 +389,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             Log.app.info("launch gallery presenting items=\(self.store.items.count, privacy: .public)")
-            self.gallery.show(relativeTo: self.statusItem.statusButton)
+            self.gallery.show(relativeTo: self.statusItem.statusButton, source: .launch)
         }
     }
 
@@ -399,7 +401,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             Log.app.info("dock reopen gallery presenting items=\(self.store.items.count, privacy: .public)")
-            self.gallery.show(relativeTo: self.statusItem.statusButton)
+            self.gallery.show(relativeTo: self.statusItem.statusButton, source: .dock)
         }
     }
 
@@ -458,7 +460,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: StatusItemControllerDelegate {
     func statusItemToggleGallery(wasVisibleAtPress: Bool, statusButton: NSStatusBarButton?) {
-        gallery.toggle(wasVisibleAtPress: wasVisibleAtPress, statusButton: statusButton)
+        gallery.toggle(wasVisibleAtPress: wasVisibleAtPress, statusButton: statusButton, source: .statusItem)
     }
 
     func statusItemIsGalleryVisible() -> Bool {

@@ -6,6 +6,14 @@ protocol SearchProviding: AnyObject {
     func search(query: String, completion: @escaping (SearchOutcome) -> Void)
 }
 
+enum GalleryOpenSource: String {
+    case statusItem = "status_item"
+    case hotkey
+    case launch
+    case onboarding
+    case dock
+}
+
 final class GalleryPanelController: NSObject {
 
     private enum Metrics {
@@ -24,6 +32,14 @@ final class GalleryPanelController: NSObject {
         static let quickLookGrace: TimeInterval = 1.5
     }
 
+    private struct SearchSession {
+        var refinements = 0
+        var length = 0
+        var results = 0
+        var mode = "filename"
+        var selections = 0
+    }
+
     private let store: ScreenshotStore
     private let thumbnails: ThumbnailLoader
     private let grid: GalleryGridController
@@ -39,6 +55,7 @@ final class GalleryPanelController: NSObject {
     private var latestOutcome: SearchOutcome?
     private var latestLocalMatches = Set<String>()
     private var currentQuery = ""
+    private var searchSession: SearchSession?
     private var haystacks: [String: String] = [:]
     private var isDragging = false
     private var autoHideSuppressedUntil = Date.distantPast
@@ -95,6 +112,16 @@ final class GalleryPanelController: NSObject {
         grid.onExternalDropCompleted = { [weak self] count in
             guard let self else { return }
             self.onMain { self.handleExternalDropCompleted(count: count) }
+        }
+
+        grid.onItemActivated = { [weak self] activation in
+            guard let self else { return }
+            self.onMain { self.handleItemActivated(activation) }
+        }
+
+        grid.onCopyCompleted = { [weak self] count, method in
+            guard let self else { return }
+            self.onMain { self.handleCopyCompleted(count: count, method: method) }
         }
 
         store.addObserver { [weak self] change in
@@ -155,7 +182,7 @@ final class GalleryPanelController: NSObject {
         Log.gallery.info("gallery prewarmed items=\(count, privacy: .public) elapsedMs=\(elapsed, privacy: .public)")
     }
 
-    func show(relativeTo statusButton: NSStatusBarButton?) {
+    func show(relativeTo statusButton: NSStatusBarButton?, source: GalleryOpenSource) {
         prewarm()
         guard let panel else { return }
         let started = Date()
@@ -164,6 +191,7 @@ final class GalleryPanelController: NSObject {
         grid.updateThumbnailPixel(scale: panel.backingScaleFactor)
 
         if !currentQuery.isEmpty || !searchField.stringValue.isEmpty {
+            flushSearchSession(reason: "reopened")
             searchField.stringValue = ""
             currentQuery = ""
             pendingSearch?.cancel()
@@ -180,8 +208,9 @@ final class GalleryPanelController: NSObject {
         let elapsed = Int(Date().timeIntervalSince(started) * 1000)
         let count = store.items.count
         let key = panel.isKeyWindow
+        Telemetry.log(.galleryOpened, ["source": source.rawValue, "library": Telemetry.bucket(count)])
         Log.gallery.info(
-            "gallery shown items=\(count, privacy: .public) elapsedMs=\(elapsed, privacy: .public) key=\(key, privacy: .public)"
+            "gallery shown source=\(source.rawValue, privacy: .public) items=\(count, privacy: .public) elapsedMs=\(elapsed, privacy: .public) key=\(key, privacy: .public)"
         )
     }
 
@@ -191,15 +220,16 @@ final class GalleryPanelController: NSObject {
         grid.closeQuickLook()
         panel.orderOut(nil)
         restoreAppFocus()
+        flushSearchSession(reason: "hidden")
         Log.gallery.info("gallery hidden")
     }
 
-    func toggle(wasVisibleAtPress: Bool, statusButton: NSStatusBarButton?) {
-        Log.gallery.info("gallery toggle wasVisibleAtPress=\(wasVisibleAtPress, privacy: .public)")
+    func toggle(wasVisibleAtPress: Bool, statusButton: NSStatusBarButton?, source: GalleryOpenSource) {
+        Log.gallery.info("gallery toggle wasVisibleAtPress=\(wasVisibleAtPress, privacy: .public) source=\(source.rawValue, privacy: .public)")
         if wasVisibleAtPress {
             hide()
         } else {
-            show(relativeTo: statusButton)
+            show(relativeTo: statusButton, source: source)
         }
     }
 
@@ -396,13 +426,18 @@ final class GalleryPanelController: NSObject {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         updateSortControlVisibility()
         guard !trimmed.isEmpty else {
+            flushSearchSession(reason: "cleared")
             grid.applyFilter(nil)
             Log.search.info("gallery filter cleared")
             return
         }
 
+        noteSearch(length: trimmed.count)
+
         guard let provider = searchProvider, provider.isReady else {
-            grid.applyFilter(localMatches(for: trimmed))
+            let offline = localMatches(for: trimmed)
+            grid.applyFilter(offline)
+            noteResults(count: offline.count, mode: "filename")
             return
         }
 
@@ -426,13 +461,17 @@ final class GalleryPanelController: NSObject {
     private func present(_ outcome: SearchOutcome, local: Set<String>) {
         latestOutcome = outcome
         latestLocalMatches = local
+        let mode = (searchProvider?.usesSemanticSearch ?? false) ? "semantic" : "ocr"
 
         guard outcome.isRanked else {
             let merged = local.union(outcome.paths)
             grid.applyFilter(merged, resetScroll: false)
+            noteResults(count: merged.count, mode: mode)
             Log.search.info("gallery filter indexed=\(outcome.paths.count, privacy: .public) merged=\(merged.count, privacy: .public)")
             return
         }
+
+        noteResults(count: outcome.paths.count, mode: mode)
 
         switch AppSettings.shared.gallerySortOrder {
         case .relevance:
@@ -442,6 +481,60 @@ final class GalleryPanelController: NSObject {
             grid.applyFilter(Set(outcome.paths))
             Log.search.info("gallery date-sorted results=\(outcome.paths.count, privacy: .public)")
         }
+    }
+
+    private func noteSearch(length: Int) {
+        if searchSession == nil {
+            searchSession = SearchSession()
+            Log.search.debug("search session started")
+        }
+        searchSession?.refinements += 1
+        searchSession?.length = length
+    }
+
+    private func noteResults(count: Int, mode: String) {
+        guard searchSession != nil else { return }
+        searchSession?.results = count
+        searchSession?.mode = mode
+    }
+
+    private func flushSearchSession(reason: String) {
+        guard let session = searchSession else { return }
+        searchSession = nil
+        Telemetry.log(.gallerySearched, [
+            "mode": session.mode,
+            "results": Telemetry.bucket(session.results),
+            "length": Telemetry.bucket(session.length),
+            "refinements": Telemetry.bucket(session.refinements),
+            "selected": Telemetry.flag(session.selections > 0)
+        ])
+        Log.search.info(
+            "search session flushed reason=\(reason, privacy: .public) mode=\(session.mode, privacy: .public) results=\(session.results, privacy: .public) refinements=\(session.refinements, privacy: .public) selections=\(session.selections, privacy: .public)"
+        )
+    }
+
+    private func handleItemActivated(_ activation: GalleryActivation) {
+        guard searchSession != nil else { return }
+        searchSession?.selections += 1
+        Telemetry.log(.gallerySearchSelected, [
+            "action": activation.action,
+            "rank": Telemetry.bucket(activation.rank),
+            "count": Telemetry.bucket(activation.count)
+        ])
+        Log.search.info(
+            "search result activated action=\(activation.action, privacy: .public) rank=\(activation.rank, privacy: .public) count=\(activation.count, privacy: .public)"
+        )
+    }
+
+    private func handleCopyCompleted(count: Int, method: GalleryCopyMethod) {
+        Telemetry.log(.galleryCopied, [
+            "count": Telemetry.bucket(count),
+            "method": method.rawValue,
+            "in_search": Telemetry.flag(searchSession != nil)
+        ])
+        Log.gallery.info(
+            "gallery copy recorded count=\(count, privacy: .public) method=\(method.rawValue, privacy: .public)"
+        )
     }
 
     private func configureSortControl() {

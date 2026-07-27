@@ -17,6 +17,7 @@ extension Notification.Name {
     static let sukuriniSemanticStateChanged = Notification.Name("sukurini.semanticStateChanged")
     static let sukuriniDockVisibilityChanged = Notification.Name("sukurini.dockVisibilityChanged")
     static let sukuriniUpdateChannelChanged = Notification.Name("sukurini.updateChannelChanged")
+    static let sukuriniAnalyticsEnabledChanged = Notification.Name("sukurini.analyticsEnabledChanged")
 }
 
 struct HotKeyBinding: Equatable {
@@ -50,6 +51,7 @@ final class AppSettings {
         static let launchCount = "launchCount"
         static let onboardingCompletedAt = "onboardingCompletedAt"
         static let updateChannel = "updateChannel"
+        static let analyticsEnabled = "analyticsEnabled"
     }
 
     private let defaults: UserDefaults
@@ -93,16 +95,22 @@ final class AppSettings {
         Log.settings.info("migrated settings from legacy domain keys=\(moved, privacy: .public)")
     }
 
+    private func recordChange(_ setting: String, _ state: String) {
+        Telemetry.log(.settingChanged, ["setting": setting, "state": state])
+    }
+
     var folders: [URL] {
         get {
             let paths = defaults.stringArray(forKey: Key.folders) ?? []
             return paths.map { URL(fileURLWithPath: $0).standardizedFileURL }
         }
         set {
+            let previous = (defaults.stringArray(forKey: Key.folders) ?? []).count
             var seen = Set<String>()
             let unique = newValue.map { $0.standardizedFileURL }.filter { seen.insert($0.path).inserted }
             defaults.set(unique.map(\.path), forKey: Key.folders)
             Log.settings.info("folders updated count=\(unique.count, privacy: .public)")
+            if previous != unique.count { recordChange("folders", Telemetry.bucket(unique.count)) }
             NotificationCenter.default.post(name: .sukuriniFoldersChanged, object: self)
         }
     }
@@ -123,8 +131,10 @@ final class AppSettings {
     var ocrEnabled: Bool {
         get { defaults.object(forKey: Key.ocrEnabled) as? Bool ?? true }
         set {
+            let previous = ocrEnabled
             defaults.set(newValue, forKey: Key.ocrEnabled)
             Log.settings.info("ocrEnabled updated value=\(newValue, privacy: .public)")
+            if previous != newValue { recordChange("ocr", Telemetry.flag(newValue)) }
             NotificationCenter.default.post(name: .sukuriniOCREnabledChanged, object: self)
         }
     }
@@ -132,8 +142,10 @@ final class AppSettings {
     var lazyIndexOnBattery: Bool {
         get { defaults.object(forKey: Key.lazyIndexOnBattery) as? Bool ?? true }
         set {
+            let previous = lazyIndexOnBattery
             defaults.set(newValue, forKey: Key.lazyIndexOnBattery)
             Log.settings.info("lazyIndexOnBattery updated value=\(newValue, privacy: .public)")
+            if previous != newValue { recordChange("battery_lazy_index", Telemetry.flag(newValue)) }
             NotificationCenter.default.post(name: .sukuriniOCRPowerPolicyChanged, object: self)
         }
     }
@@ -141,8 +153,10 @@ final class AppSettings {
     var pauseIndexingOnLowPower: Bool {
         get { defaults.object(forKey: Key.pauseIndexingOnLowPower) as? Bool ?? true }
         set {
+            let previous = pauseIndexingOnLowPower
             defaults.set(newValue, forKey: Key.pauseIndexingOnLowPower)
             Log.settings.info("pauseIndexingOnLowPower updated value=\(newValue, privacy: .public)")
+            if previous != newValue { recordChange("low_power_pause", Telemetry.flag(newValue)) }
             NotificationCenter.default.post(name: .sukuriniOCRPowerPolicyChanged, object: self)
         }
     }
@@ -159,6 +173,7 @@ final class AppSettings {
                 Log.settings.info("webpConversionEnabledAt cleared")
             }
             Log.settings.info("webpConversionEnabled updated value=\(newValue, privacy: .public)")
+            if previous != newValue { recordChange("webp", Telemetry.flag(newValue)) }
             NotificationCenter.default.post(name: .sukuriniWebPConversionChanged, object: self)
         }
     }
@@ -186,8 +201,10 @@ final class AppSettings {
             return parsed
         }
         set {
+            let previous = webpDisposal
             defaults.set(newValue.rawValue, forKey: Key.webpDisposal)
             Log.settings.info("webpDisposal updated value=\(newValue.rawValue, privacy: .public)")
+            if previous != newValue { recordChange("webp_disposal", newValue.rawValue) }
             NotificationCenter.default.post(name: .sukuriniWebPConversionChanged, object: self)
         }
     }
@@ -195,8 +212,10 @@ final class AppSettings {
     var copyAsPNGEnabled: Bool {
         get { defaults.object(forKey: Key.copyAsPNGEnabled) as? Bool ?? false }
         set {
+            let previous = copyAsPNGEnabled
             defaults.set(newValue, forKey: Key.copyAsPNGEnabled)
             Log.settings.info("copyAsPNGEnabled updated value=\(newValue, privacy: .public)")
+            if previous != newValue { recordChange("copy_as_png", Telemetry.flag(newValue)) }
             NotificationCenter.default.post(name: .sukuriniWebPConversionChanged, object: self)
         }
     }
@@ -208,8 +227,10 @@ final class AppSettings {
     var organizeEnabled: Bool {
         get { defaults.object(forKey: Key.organizeEnabled) as? Bool ?? false }
         set {
+            let previous = organizeEnabled
             defaults.set(newValue, forKey: Key.organizeEnabled)
             Log.settings.info("organizeEnabled updated value=\(newValue, privacy: .public)")
+            if previous != newValue { recordChange("organize", Telemetry.flag(newValue)) }
             NotificationCenter.default.post(name: .sukuriniOrganizeChanged, object: self)
         }
     }
@@ -223,8 +244,12 @@ final class AppSettings {
             return resolved.pattern
         }
         set {
+            let previous = organizeFormat
             defaults.set(newValue, forKey: Key.organizeFormat)
             Log.settings.info("organizeFormat updated value=\(newValue, privacy: .public)")
+            if previous != organizeFormat {
+                recordChange("organize_format", organizeFormat == DateFolderFormat.defaultPattern ? "default" : "custom")
+            }
             NotificationCenter.default.post(name: .sukuriniOrganizeChanged, object: self)
         }
     }
@@ -232,8 +257,10 @@ final class AppSettings {
     var includeSubfolders: Bool {
         get { defaults.object(forKey: Key.includeSubfolders) as? Bool ?? false }
         set {
+            let previous = includeSubfolders
             defaults.set(newValue, forKey: Key.includeSubfolders)
             Log.settings.info("includeSubfolders updated value=\(newValue, privacy: .public)")
+            if previous != newValue { recordChange("include_subfolders", Telemetry.flag(newValue)) }
             NotificationCenter.default.post(name: .sukuriniIncludeSubfoldersChanged, object: self)
         }
     }
@@ -241,8 +268,10 @@ final class AppSettings {
     var semanticSearchEnabled: Bool {
         get { defaults.object(forKey: Key.semanticEnabled) as? Bool ?? false }
         set {
+            let previous = semanticSearchEnabled
             defaults.set(newValue, forKey: Key.semanticEnabled)
             Log.settings.info("semanticSearchEnabled updated value=\(newValue, privacy: .public)")
+            if previous != newValue { recordChange("semantic", Telemetry.flag(newValue)) }
             NotificationCenter.default.post(name: .sukuriniSemanticEnabledChanged, object: self)
         }
     }
@@ -257,6 +286,7 @@ final class AppSettings {
             guard resolved != semanticModelIdentifier else { return }
             defaults.set(resolved, forKey: Key.semanticModel)
             Log.settings.info("semanticModel updated value=\(resolved, privacy: .public)")
+            recordChange("semantic_model", resolved)
             NotificationCenter.default.post(name: .sukuriniSemanticModelChanged, object: self)
         }
     }
@@ -264,9 +294,21 @@ final class AppSettings {
     var alwaysShowInDock: Bool {
         get { defaults.object(forKey: Key.alwaysShowInDock) as? Bool ?? false }
         set {
+            let previous = alwaysShowInDock
             defaults.set(newValue, forKey: Key.alwaysShowInDock)
             Log.settings.info("alwaysShowInDock updated value=\(newValue, privacy: .public)")
+            if previous != newValue { recordChange("dock", Telemetry.flag(newValue)) }
             NotificationCenter.default.post(name: .sukuriniDockVisibilityChanged, object: self)
+        }
+    }
+
+    var analyticsEnabled: Bool {
+        get { defaults.object(forKey: Key.analyticsEnabled) as? Bool ?? true }
+        set {
+            guard newValue != analyticsEnabled else { return }
+            defaults.set(newValue, forKey: Key.analyticsEnabled)
+            Log.settings.info("analyticsEnabled updated value=\(newValue, privacy: .public)")
+            NotificationCenter.default.post(name: .sukuriniAnalyticsEnabledChanged, object: self)
         }
     }
 
@@ -276,6 +318,7 @@ final class AppSettings {
             guard newValue != language else { return }
             defaults.set(newValue.rawValue, forKey: AppLanguage.defaultsKey)
             Log.settings.info("language updated value=\(newValue.rawValue, privacy: .public) resolved=\(newValue.resolvedLanguage.rawValue, privacy: .public)")
+            recordChange("language", newValue.rawValue)
             LocalizationCenter.shared.refresh()
         }
     }
@@ -286,6 +329,7 @@ final class AppSettings {
             guard newValue != updateChannel else { return }
             defaults.set(newValue.rawValue, forKey: Key.updateChannel)
             Log.settings.info("updateChannel updated value=\(newValue.rawValue, privacy: .public)")
+            recordChange("update_channel", newValue.rawValue)
             NotificationCenter.default.post(name: .sukuriniUpdateChannelChanged, object: self)
         }
     }
@@ -297,8 +341,10 @@ final class AppSettings {
             return parsed
         }
         set {
+            let previous = gallerySortOrder
             defaults.set(newValue.rawValue, forKey: Key.gallerySortOrder)
             Log.settings.info("gallerySortOrder updated value=\(newValue.rawValue, privacy: .public)")
+            if previous != newValue { recordChange("gallery_sort", newValue.rawValue) }
         }
     }
 
@@ -309,6 +355,7 @@ final class AppSettings {
             return HotKeyBinding(keyCode: UInt32(code), carbonModifiers: UInt32(modifiers))
         }
         set {
+            let previous = galleryHotKey
             if let newValue {
                 defaults.set(Int(newValue.keyCode), forKey: Key.hotKeyCode)
                 defaults.set(Int(newValue.carbonModifiers), forKey: Key.hotKeyModifiers)
@@ -318,6 +365,7 @@ final class AppSettings {
                 defaults.removeObject(forKey: Key.hotKeyModifiers)
                 Log.settings.info("hotkey cleared")
             }
+            if previous != newValue { recordChange("hotkey", newValue == nil ? "cleared" : "set") }
             NotificationCenter.default.post(name: .sukuriniHotKeyChanged, object: self)
         }
     }

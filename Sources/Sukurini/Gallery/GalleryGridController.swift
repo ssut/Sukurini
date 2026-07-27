@@ -124,6 +124,17 @@ final class GalleryCollectionView: NSCollectionView {
     }
 }
 
+struct GalleryActivation {
+    let action: String
+    let rank: Int
+    let count: Int
+}
+
+enum GalleryCopyMethod: String {
+    case contextMenu = "context_menu"
+    case drag
+}
+
 final class GalleryGridController: NSObject {
 
     private enum Layout {
@@ -180,6 +191,10 @@ final class GalleryGridController: NSObject {
     var onContextMenuStateChanged: ((Bool) -> Void)?
 
     var onQuickLookStateChanged: ((Bool) -> Void)?
+
+    var onItemActivated: ((GalleryActivation) -> Void)?
+
+    var onCopyCompleted: ((Int, GalleryCopyMethod) -> Void)?
 
     var containerView: NSView { container }
 
@@ -247,7 +262,11 @@ final class GalleryGridController: NSObject {
 
         quickLook.source = self
         quickLook.onStateChanged = { [weak self] active in
-            self?.onQuickLookStateChanged?(active)
+            guard let self else { return }
+            if active {
+                self.notifyActivation("quick_look", rank: self.selectionRank(), count: max(1, self.collectionView.selectionIndexPaths.count))
+            }
+            self.onQuickLookStateChanged?(active)
         }
         collectionView.quickLook = quickLook
         collectionView.pressureConfiguration = NSPressureConfiguration(pressureBehavior: .primaryDeepClick)
@@ -551,8 +570,10 @@ final class GalleryGridController: NSObject {
 
     @objc private func contextOpen(_ sender: Any?) {
         let urls = targets(from: sender).filter { FileManager.default.fileExists(atPath: $0.path) }
+        guard !urls.isEmpty else { return }
         Log.gallery.info("context open count=\(urls.count, privacy: .public)")
         urls.forEach { NSWorkspace.shared.open($0) }
+        notifyActivation("open", rank: selectionRank(), count: urls.count)
     }
 
     @objc private func contextQuickLook(_ sender: Any?) {
@@ -566,6 +587,7 @@ final class GalleryGridController: NSObject {
         guard !urls.isEmpty else { return }
         Log.gallery.info("context reveal count=\(urls.count, privacy: .public)")
         NSWorkspace.shared.activateFileViewerSelecting(urls)
+        notifyActivation("reveal", rank: selectionRank(), count: urls.count)
     }
 
     @objc private func contextCopy(_ sender: Any?) {
@@ -575,6 +597,8 @@ final class GalleryGridController: NSObject {
         pasteboard.clearContents()
         pasteboard.writeObjects(PNGExporter.shared.pasteboardWriters(for: urls))
         Log.gallery.info("context copy count=\(urls.count, privacy: .public) asPNG=\(PNGExporter.shared.isActive, privacy: .public)")
+        notifyActivation("copy", rank: selectionRank(), count: urls.count)
+        onCopyCompleted?(urls.count, .contextMenu)
     }
 
     @objc private func contextTrash(_ sender: Any?) {
@@ -816,7 +840,23 @@ final class GalleryGridController: NSObject {
             return
         }
         NSWorkspace.shared.open(url)
+        notifyActivation("open", rank: rank(for: url), count: 1)
         Log.gallery.info("opened screenshot file=\(name, privacy: .public)")
+    }
+
+    private func notifyActivation(_ action: String, rank: Int, count: Int) {
+        onItemActivated?(GalleryActivation(action: action, rank: rank, count: count))
+    }
+
+    private func rank(for url: URL) -> Int {
+        guard let indexPath = indexPath(for: url), let flat = flatIndex(of: indexPath) else { return 0 }
+        return flat + 1
+    }
+
+    private func selectionRank() -> Int {
+        guard let first = collectionView.selectionIndexPaths.sorted().first else { return 0 }
+        guard let flat = flatIndex(of: first) else { return 0 }
+        return flat + 1
     }
 }
 
@@ -914,6 +954,7 @@ extension GalleryGridController: NSCollectionViewDelegate {
         dragItemCount = indexPaths.count
         onDragStateChanged?(true)
         let count = indexPaths.count
+        notifyActivation("drag", rank: selectionRank(), count: count)
         Log.drag.info("gallery drag started count=\(count, privacy: .public)")
     }
 
@@ -932,6 +973,7 @@ extension GalleryGridController: NSCollectionViewDelegate {
             return
         }
         Log.drag.info("gallery drag dropped operation=\(raw, privacy: .public) count=\(count, privacy: .public)")
+        onCopyCompleted?(count, .drag)
         onExternalDropCompleted?(count)
     }
 }

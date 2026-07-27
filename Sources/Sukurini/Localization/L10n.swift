@@ -1386,3 +1386,30 @@ extension L10n {
         }
     }
 }
+
+extension L10n {
+    enum Analytics {
+        static var header: String { tr(en: "Privacy", ko: "개인정보", ja: "プライバシー") }
+        static var enable: String {
+            tr(
+                en: "Anonymous Analytics (Telemetry)",
+                ko: "익명 사용 통계 (텔레메트리)",
+                ja: "匿名の利用統計（テレメトリ）"
+            )
+        }
+        static var enableDetail: String {
+            tr(
+                en: "Counts only — which features get used, and how often.",
+                ko: "어떤 기능을 얼마나 쓰는지, 숫자만 보내요.",
+                ja: "どの機能をどれくらい使うか、数だけを送ります。"
+            )
+        }
+        static var footer: String {
+            tr(
+                en: "Never sent: file names, folder paths, search words, or image contents. Counts are rounded into ranges, and no account or advertising identifier is attached. Crash reports are separate and keep working when this is off.",
+                ko: "파일 이름, 폴더 경로, 검색어, 이미지 내용은 절대 보내지 않아요. 숫자는 구간으로 뭉뚱그려 보내고, 계정이나 광고 식별자도 붙지 않아요. 오류 보고는 따로라서 이걸 꺼도 계속 보내져요.",
+                ja: "ファイル名、フォルダのパス、検索した言葉、画像の中身は一切送りません。件数は範囲にまるめて送り、アカウントや広告 ID も付きません。クラッシュ報告は別扱いで、これをオフにしても送られます。"
+            )
+        }
+    }
+}

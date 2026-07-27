@@ -72,6 +72,7 @@ struct PreferencesView: View {
     @State private var updateAvailability = UpdateCoordinator.Availability.notBundled
     @State private var lastUpdateCheck: Date?
     @State private var language = AppSettings.shared.language
+    @State private var analyticsEnabled = true
     @ObservedObject private var localization = LocalizationCenter.shared
 
     init(
@@ -121,6 +122,7 @@ struct PreferencesView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .sukuriniDockVisibilityChanged)) { _ in onMain { reloadDockVisibility() } }
             .onReceive(NotificationCenter.default.publisher(for: .sukuriniUpdateChannelChanged)) { _ in onMain { reloadUpdates() } }
+            .onReceive(NotificationCenter.default.publisher(for: .sukuriniAnalyticsEnabledChanged)) { _ in onMain { reloadAnalytics() } }
             .onReceive(NotificationCenter.default.publisher(for: .sukuriniLanguageChanged)) { _ in onMain { relocalize() } }
     }
 
@@ -187,9 +189,48 @@ struct PreferencesView: View {
             shortcutSection
             screenshotsSection
             updatesSection
+            analyticsSection
         }
         .formStyle(.grouped)
         .frame(minHeight: Layout.tabMinHeight)
+    }
+
+    private var analyticsSection: some View {
+        Section {
+            Toggle(isOn: analyticsBinding) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(L10n.Analytics.enable)
+                    Text(L10n.Analytics.enableDetail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text(L10n.Analytics.header)
+        } footer: {
+            Text(L10n.Analytics.footer)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var analyticsBinding: Binding<Bool> {
+        Binding(
+            get: { analyticsEnabled },
+            set: { desired in
+                analyticsEnabled = desired
+                if AppSettings.shared.analyticsEnabled != desired {
+                    AppSettings.shared.analyticsEnabled = desired
+                }
+                Log.settings.info("preferences analytics toggled value=\(desired, privacy: .public)")
+            }
+        )
+    }
+
+    private func reloadAnalytics() {
+        analyticsEnabled = AppSettings.shared.analyticsEnabled
+        Log.settings.debug("preferences analytics synced value=\(self.analyticsEnabled, privacy: .public)")
     }
 
     private var languageSection: some View {
@@ -1298,6 +1339,7 @@ struct PreferencesView: View {
                 loginError = nil
                 do {
                     try LoginItem.setEnabled(desired)
+                    Telemetry.log(.settingChanged, ["setting": "launch_at_login", "state": Telemetry.flag(desired)])
                 } catch {
                     loginError = error.localizedDescription
                     Log.settings.error("preferences login toggle failed desired=\(desired, privacy: .public) error=\(error.localizedDescription, privacy: .public)")
@@ -1518,6 +1560,7 @@ struct PreferencesView: View {
         reloadOrganize()
         reloadOrganizeProgress()
         reloadUpdates()
+        reloadAnalytics()
         language = AppSettings.shared.language
         Log.settings.info("preferences reloaded folders=\(AppSettings.shared.folders.count, privacy: .public) loginAvailable=\(LoginItem.isAvailable, privacy: .public) language=\(self.language.rawValue, privacy: .public)")
     }
