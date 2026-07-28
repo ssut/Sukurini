@@ -262,6 +262,7 @@ final class GalleryPanelController: NSObject {
         effect.layer?.cornerRadius = Metrics.cornerRadius
         effect.layer?.cornerCurve = .continuous
         effect.layer?.masksToBounds = true
+        effect.maskImage = Self.roundedCornerMask(radius: Metrics.cornerRadius)
 
         let header = NSView()
         header.translatesAutoresizingMaskIntoConstraints = false
@@ -324,6 +325,18 @@ final class GalleryPanelController: NSObject {
         panel.contentView = effect
         self.panel = panel
         Log.gallery.info("gallery panel constructed")
+    }
+
+    private static func roundedCornerMask(radius: CGFloat) -> NSImage {
+        let side = radius * 2 + 1
+        let mask = NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
+            return true
+        }
+        mask.capInsets = NSEdgeInsets(top: radius, left: radius, bottom: radius, right: radius)
+        mask.resizingMode = .stretch
+        return mask
     }
 
     private func configureSearchField() {
