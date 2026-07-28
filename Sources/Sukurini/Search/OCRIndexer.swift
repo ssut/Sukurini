@@ -286,6 +286,10 @@ final class OCRIndexer {
         guard needsText || needsVector else { return }
 
         let path = screenshot.path
+        guard !ScreenshotFile.isVideo(screenshot.url) else {
+            Log.ocr.debug("skip reason=video path=\(path, privacy: .public)")
+            return
+        }
         guard FileManager.default.fileExists(atPath: path) else {
             Log.ocr.info("skip reason=missing path=\(path, privacy: .public)")
             index.removePaths([path])
@@ -363,7 +367,11 @@ final class OCRIndexer {
                 Log.ocr.info("store removed count=\(paths.count, privacy: .public)")
                 self.index.removePaths(paths)
             }
-            guard !change.inserted.isEmpty || change.isFullReload || !change.removedURLs.isEmpty else { return }
+            let insertedIndexable = change.inserted.contains { !ScreenshotFile.isVideo($0.url) }
+            guard insertedIndexable || change.isFullReload || !change.removedURLs.isEmpty else {
+                Log.ocr.debug("store change ignored reason=videos-only inserted=\(change.inserted.count, privacy: .public)")
+                return
+            }
             self.requestReconcile(immediate: false)
         }
         Log.ocr.info("store observer installed")
@@ -456,8 +464,8 @@ final class OCRIndexer {
 
     private func performReconcile() {
         guard state.sync(execute: { running }) else { return }
-        let items = store.items
-        guard !items.isEmpty else {
+        let allItems = store.items
+        guard !allItems.isEmpty else {
             guard reconcileRetries < OCRIndexer.maximumReconcileRetries else {
                 Log.ocr.info("reconcile abandoned reason=empty-store folderMissing=\(self.store.isFolderMissing, privacy: .public)")
                 return
@@ -468,9 +476,10 @@ final class OCRIndexer {
             return
         }
         reconcileRetries = 0
+        let items = allItems.filter { !ScreenshotFile.isVideo($0.url) }
         let folder = store.activeFolder
         let textWanted = AppSettings.shared.ocrEnabled
-        Log.ocr.info("reconcile start items=\(items.count, privacy: .public) folder=\(folder?.path ?? "none", privacy: .public) text=\(textWanted, privacy: .public)")
+        Log.ocr.info("reconcile start items=\(items.count, privacy: .public) videosSkipped=\(allItems.count - items.count, privacy: .public) folder=\(folder?.path ?? "none", privacy: .public) text=\(textWanted, privacy: .public)")
         index.reconcile(with: items, folder: folder) { [weak self] textPending in
             guard let self = self else { return }
             let textPaths = textWanted ? Set(textPending.map { $0.path }) : []

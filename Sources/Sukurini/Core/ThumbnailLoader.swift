@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import Foundation
 import ImageIO
 import os
@@ -245,16 +246,7 @@ final class ThumbnailLoader {
 
     func seed(_ cgImage: CGImage, for url: URL, maxPixel: Int) {
         guard let scaled = Self.downsample(cgImage, maxPixel: maxPixel) else { return }
-        let scale = currentScale()
-        let effectiveScale = scale > 0 ? scale : 2
-        let pointSize = NSSize(
-            width: max(1, CGFloat(scaled.width) / effectiveScale),
-            height: max(1, CGFloat(scaled.height) / effectiveScale)
-        )
-        let rep = NSBitmapImageRep(cgImage: scaled)
-        rep.size = pointSize
-        let image = NSImage(size: pointSize)
-        image.addRepresentation(rep)
+        let image = Self.pointScaledImage(scaled, scale: currentScale())
         store(image, key: Self.cacheKey(url: url, maxPixel: maxPixel))
         Log.thumbnail.debug("seeded file=\(url.lastPathComponent, privacy: .public) maxPixel=\(maxPixel, privacy: .public)")
     }
@@ -341,6 +333,9 @@ final class ThumbnailLoader {
             Log.thumbnail.error("decode aborted file missing file=\(name, privacy: .public)")
             return nil
         }
+        if ScreenshotFile.isVideo(url) {
+            return decodeVideoFrame(url: url, maxPixel: maxPixel, scale: scale)
+        }
         let sourceOptions: [CFString: Any] = [kCGImageSourceShouldCache: false]
         guard let source = CGImageSourceCreateWithURL(url as CFURL, sourceOptions as CFDictionary) else {
             Log.thumbnail.info("image source unavailable falling back to icon file=\(name, privacy: .public)")
@@ -356,6 +351,27 @@ final class ThumbnailLoader {
             Log.thumbnail.info("thumbnail decode failed falling back to icon file=\(name, privacy: .public)")
             return fallbackIcon(url: url, maxPixel: maxPixel, scale: scale)
         }
+        return pointScaledImage(cgImage, scale: scale)
+    }
+
+    private static func decodeVideoFrame(url: URL, maxPixel: Int, scale: CGFloat) -> NSImage? {
+        let name = url.lastPathComponent
+        let started = Date()
+        let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+        generator.appliesPreferredTrackTransform = true
+        generator.maximumSize = CGSize(width: maxPixel, height: maxPixel)
+        do {
+            let frame = try generator.copyCGImage(at: .zero, actualTime: nil)
+            let elapsed = Int(Date().timeIntervalSince(started) * 1000)
+            Log.thumbnail.debug("video frame decoded file=\(name, privacy: .public) pixels=\(frame.width, privacy: .public)x\(frame.height, privacy: .public) ms=\(elapsed, privacy: .public)")
+            return pointScaledImage(frame, scale: scale)
+        } catch {
+            Log.thumbnail.info("video frame decode failed falling back to icon file=\(name, privacy: .public) error=\(error.localizedDescription, privacy: .public)")
+            return fallbackIcon(url: url, maxPixel: maxPixel, scale: scale)
+        }
+    }
+
+    private static func pointScaledImage(_ cgImage: CGImage, scale: CGFloat) -> NSImage {
         let effectiveScale = scale > 0 ? scale : 2
         let pointSize = NSSize(
             width: max(1, CGFloat(cgImage.width) / effectiveScale),

@@ -37,6 +37,12 @@ final class PNGExporter {
     }
 
     private func shouldExport(_ url: URL, forced: Bool) -> Bool {
+        guard !ScreenshotFile.isVideo(url) else {
+            if forced {
+                Log.convert.debug("png export forced skipped reason=video file=\(url.lastPathComponent, privacy: .public)")
+            }
+            return false
+        }
         guard forced else { return handles(url) }
         guard url.pathExtension.lowercased() != ScreenshotFile.pngExtension else {
             Log.convert.debug("png export forced skipped reason=already_png file=\(url.lastPathComponent, privacy: .public)")

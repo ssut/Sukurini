@@ -32,7 +32,9 @@ struct StoreChange {
 }
 
 enum ScreenshotFile {
-    static let allowedExtensions: Set<String> = ["png", "webp", "heic", "heif", "jpg", "jpeg", "tif", "tiff", "pdf", "gif"]
+    static let imageExtensions: Set<String> = ["png", "webp", "heic", "heif", "jpg", "jpeg", "tif", "tiff", "pdf", "gif"]
+    static let videoExtensions: Set<String> = ["mov", "mp4", "m4v"]
+    static let allowedExtensions: Set<String> = imageExtensions.union(videoExtensions)
     static let pngExtension = "png"
     static let convertibleExtension = pngExtension
     static let convertedExtension = "webp"
@@ -41,6 +43,10 @@ enum ScreenshotFile {
         let name = url.lastPathComponent
         guard !name.hasPrefix(".") else { return false }
         return allowedExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    static func isVideo(_ url: URL) -> Bool {
+        videoExtensions.contains(url.pathExtension.lowercased())
     }
 
     static func isConvertible(_ url: URL) -> Bool {

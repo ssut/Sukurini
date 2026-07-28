@@ -104,9 +104,16 @@ final class ScreenshotItem: NSCollectionViewItem {
     static let defaultSize = NSSize(width: 180, height: 124)
     static let imageInset: CGFloat = 5
 
+    private enum Badge {
+        static let size = NSSize(width: 24, height: 16)
+        static let margin: CGFloat = 10
+        static let glyphPointSize: CGFloat = 8
+    }
+
     private(set) var representedURL: URL?
     private weak var loader: ThumbnailLoader?
     private var maxPixel: Int = 0
+    private var videoBadge: NSView?
 
     var onOpen: ((URL) -> Void)?
 
@@ -126,6 +133,16 @@ final class ScreenshotItem: NSCollectionViewItem {
         thumbnail.wantsLayer = true
         container.addSubview(thumbnail)
 
+        let badge = makeVideoBadge()
+        container.addSubview(badge)
+        NSLayoutConstraint.activate([
+            badge.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: Badge.margin),
+            badge.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -Badge.margin),
+            badge.widthAnchor.constraint(equalToConstant: Badge.size.width),
+            badge.heightAnchor.constraint(equalToConstant: Badge.size.height)
+        ])
+        videoBadge = badge
+
         container.onDoubleClick = { [weak self] in
             guard let self, let url = self.representedURL else { return }
             let name = url.lastPathComponent
@@ -135,6 +152,29 @@ final class ScreenshotItem: NSCollectionViewItem {
 
         view = container
         imageView = thumbnail
+    }
+
+    private func makeVideoBadge() -> NSView {
+        let badge = NSView()
+        badge.translatesAutoresizingMaskIntoConstraints = false
+        badge.wantsLayer = true
+        badge.isHidden = true
+        badge.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.55).cgColor
+        badge.layer?.cornerRadius = Badge.size.height / 2
+        badge.layer?.cornerCurve = .continuous
+
+        let glyph = NSImageView()
+        glyph.translatesAutoresizingMaskIntoConstraints = false
+        glyph.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: nil)
+        glyph.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: Badge.glyphPointSize, weight: .bold)
+        glyph.contentTintColor = .white
+        badge.addSubview(glyph)
+
+        NSLayoutConstraint.activate([
+            glyph.centerXAnchor.constraint(equalTo: badge.centerXAnchor),
+            glyph.centerYAnchor.constraint(equalTo: badge.centerYAnchor)
+        ])
+        return badge
     }
 
     override var isSelected: Bool {
@@ -149,6 +189,7 @@ final class ScreenshotItem: NSCollectionViewItem {
         representedURL = url
         self.loader = loader
         self.maxPixel = maxPixel
+        videoBadge?.isHidden = !ScreenshotFile.isVideo(url)
 
         if let cached = loader.cachedThumbnail(for: url, maxPixel: maxPixel) {
             imageView?.image = cached
@@ -170,6 +211,7 @@ final class ScreenshotItem: NSCollectionViewItem {
         }
         representedURL = nil
         imageView?.image = nil
+        videoBadge?.isHidden = true
         refreshActiveState()
     }
 
