@@ -1688,11 +1688,15 @@ code {
 /* Per-language typesetting.
    Must be written as elem:lang(), never :lang() elem — the latter is a
    descendant selector and never matches when lang sits on the element itself. */
+/* Korean wraps per character by default, which is wrong: it reads as words
+   separated by spaces, so keep-all is what makes it break like a sentence.
+   overflow-wrap is the escape hatch keep-all needs — without it a long
+   unbroken run has nowhere to break and runs out of its column. */
 :lang(ko) {
   line-height: 1.72;
   letter-spacing: -0.003em;
   word-break: keep-all;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 h1:lang(ko) { line-height: 1.30; letter-spacing: -0.022em; max-width: 15em; }
 h2:lang(ko), h3:lang(ko) { line-height: 1.40; letter-spacing: -0.018em; max-width: 14em; }
@@ -1702,7 +1706,7 @@ p:lang(ko) { max-width: 34em; }
   line-height: 1.80;
   letter-spacing: 0.012em;
   line-break: strict;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 h1:lang(ja) { line-height: 1.38; letter-spacing: -0.010em; max-width: 15em; }
 h2:lang(ja), h3:lang(ja) { line-height: 1.45; letter-spacing: -0.005em; max-width: 14em; }
@@ -1716,6 +1720,27 @@ p:lang(ja) { max-width: 34em; }
 .stage-lede:lang(ko), .stage-lede:lang(ja) { max-width: 34em; }
 .origin p:lang(ko), .origin p:lang(ja) { max-width: 36em; }
 .ob-sub:lang(ko), .ob-sub:lang(ja) { max-width: 26em; }
+
+/* Where a line is allowed to end. Only page copy is selected; the mock windows
+   sit deeper and keep the browser's own breaking.
+
+   Every block here is two to four lines, which is exactly what balancing is
+   for: it evens the lines out instead of filling each one to the margin and
+   leaving a stub behind. Measured against this page's own copy it never cost a
+   line and closed the longest-to-shortest gap in all three languages — the
+   English intro went from 333px of ragged to 46, Korean from 322 to 9, the
+   Japanese storage lede from 460 to 14.
+
+   Korean needs the keep-all above for this to mean anything. Korean wraps per
+   character by default, so without it the balancer is free to hunt for even
+   lines and find them in the middle of a word.
+
+   Two neighbours were tried and dropped. word-break: auto-phrase confines
+   Japanese to phrase boundaries, which added a line to three of the four
+   headings here and never improved the evenness. text-wrap: pretty changed
+   nothing whatsoever in Japanese, and balance beat it on every Latin and
+   Korean block. */
+main > section > :is(h1, h2, p) { text-wrap: balance; }
 
 /* The header holds neutral metrics in every language. Without this the
    per-language line-height above grows the nav and every section below it
