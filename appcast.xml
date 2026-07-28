@@ -6,6 +6,22 @@
     <description>Most recent updates to Sukurini</description>
     <language>en</language>
     <item>
+      <title>1.0.3</title>
+      <pubDate>Tue, 28 Jul 2026 10:56:41 +0000</pubDate>
+      <sparkle:version>6</sparkle:version>
+      <sparkle:shortVersionString>1.0.3</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description sparkle:format="markdown">### Added
+- **Gallery** — Keep screen recordings next to the screenshots
+- **Drag** — Hold Option to drop the menu bar shot as a PNG
+
+### Fixed
+- **Updates** — Show only the release notes instead of the whole GitHub page
+- **Gallery** — Clip the panel's blur to its rounded corners</description>
+      <sparkle:fullReleaseNotesLink>https://github.com/ssut/Sukurini/releases</sparkle:fullReleaseNotesLink>
+      <enclosure url="https://github.com/ssut/Sukurini/releases/download/v1.0.3/Sukurini-1.0.3.dmg" length="4146962" type="application/octet-stream" sparkle:edSignature="8Zi8Kqx31RRvP25xeM+JzxHTcfQkxuP3pLh41cE5fPovMIkwq7AS5d4+sIpcVIRFh0293MfJd9xNyEfDOZE8Ag==" />
+    </item>
+    <item>
       <title>1.0.2</title>
       <pubDate>Tue, 28 Jul 2026 06:16:32 +0000</pubDate>
       <sparkle:version>5</sparkle:version>
