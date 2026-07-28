@@ -119,6 +119,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Generate release notes
+        id: notes
+        run: |
+          set -euo pipefail
+          python3 Scripts/release-notes.py \
+            --version "${{ needs.check.outputs.short }}" \
+            --notes "$RUNNER_TEMP/release-notes.md" \
+            --changelog CHANGELOG.md \
+            --github-output "$GITHUB_OUTPUT"
+          echo "notes status=ready entries=$(grep -c '^- ' "$RUNNER_TEMP/release-notes.md" || true)"
+
       - name: Verify signing configuration
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
@@ -309,15 +320,22 @@ jobs:
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREVIOUS: ${{ steps.notes.outputs.previous }}
         run: |
           set -euo pipefail
           TAG="${{ needs.check.outputs.tag }}"
           DMG="${{ needs.check.outputs.dmg }}"
+          BODY="$RUNNER_TEMP/release-body.md"
+          cp -f "$RUNNER_TEMP/release-notes.md" "$BODY"
+          if [ -n "${PREVIOUS:-}" ]; then
+            printf '\n**Full Changelog**: https://github.com/%s/compare/%s...%s\n' "$GITHUB_REPOSITORY" "$PREVIOUS" "$TAG" >> "$BODY"
+          fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$DMG" --clobber
-            echo "release status=asset_replaced tag=$TAG asset=$DMG"
+            gh release edit "$TAG" --notes-file "$BODY"
+            echo "release status=asset_replaced tag=$TAG asset=$DMG notes=rewritten"
           else
-            FLAGS=(--target "$GITHUB_SHA" --title "$TAG" --generate-notes)
+            FLAGS=(--target "$GITHUB_SHA" --title "$TAG" --notes-file "$BODY")
             if [ "${{ needs.check.outputs.prerelease }}" = "true" ]; then
               FLAGS+=(--prerelease)
             fi
@@ -354,7 +372,8 @@ jobs:
             --short-version "${{ needs.check.outputs.short }}" \
             --channel "${{ needs.check.outputs.channel }}" \
             --min-system "$MIN_SYSTEM" \
-            --release-notes-url "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" \
+            --release-notes-file "$RUNNER_TEMP/release-notes.md" \
+            --full-release-notes-url "https://github.com/${GITHUB_REPOSITORY}/releases" \
             --sign-update ".build/artifacts/sparkle/Sparkle/bin/sign_update" \
             --private-key-file "-" \
             --feed-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${APPCAST_BRANCH}/${APPCAST_FILE}"
@@ -369,6 +388,32 @@ jobs:
             git -C appcast-work push origin "$APPCAST_BRANCH"
             echo "appcast status=published branch=$APPCAST_BRANCH"
           fi
+
+      - name: Publish changelog
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.check.outputs.tag }}"
+          BRANCH="$GITHUB_REF_NAME"
+          if [ -z "$(git status --porcelain -- CHANGELOG.md)" ]; then
+            echo "changelog status=unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "changelog: $TAG"
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:${BRANCH}"; then
+              echo "changelog status=published branch=$BRANCH attempt=$attempt"
+              exit 0
+            fi
+            echo "changelog status=retry branch=$BRANCH attempt=$attempt"
+            git fetch origin "$BRANCH"
+            git rebase "origin/${BRANCH}"
+          done
+          echo "changelog status=fail reason=push_rejected branch=$BRANCH"
+          exit 1
 
       - name: Clean up keychain
         if: always()

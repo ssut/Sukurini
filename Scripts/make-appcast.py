@@ -94,7 +94,20 @@ def item_sort_key(item):
     return (published, numeric)
 
 
-def build_item(args, signature, length, published):
+def load_release_notes(path):
+    if not path:
+        return ""
+    if not os.path.exists(path):
+        fail("release_notes_missing path=%s" % path)
+    with open(path, encoding="utf-8") as handle:
+        notes = handle.read().strip()
+    if not notes:
+        fail("release_notes_empty path=%s" % path)
+    log("release notes loaded path=%s bytes=%d" % (path, len(notes.encode("utf-8"))))
+    return notes
+
+
+def build_item(args, signature, length, published, notes):
     item = ET.Element("item")
     ET.SubElement(item, "title").text = args.short_version
     ET.SubElement(item, "pubDate").text = format_datetime(published)
@@ -103,8 +116,11 @@ def build_item(args, signature, length, published):
     if args.channel != "stable":
         ET.SubElement(item, sparkle_tag("channel")).text = args.channel
     ET.SubElement(item, sparkle_tag("minimumSystemVersion")).text = args.min_system
-    if args.release_notes_url:
-        ET.SubElement(item, sparkle_tag("releaseNotesLink")).text = args.release_notes_url
+    if notes:
+        description = ET.SubElement(item, "description", {sparkle_tag("format"): "markdown"})
+        description.text = notes
+    if args.full_release_notes_url:
+        ET.SubElement(item, sparkle_tag("fullReleaseNotesLink")).text = args.full_release_notes_url
     ET.SubElement(
         item,
         "enclosure",
@@ -127,7 +143,8 @@ def main():
     parser.add_argument("--short-version", required=True)
     parser.add_argument("--channel", required=True, choices=["stable", "preview"])
     parser.add_argument("--min-system", default="14.0")
-    parser.add_argument("--release-notes-url", default="")
+    parser.add_argument("--release-notes-file", default="")
+    parser.add_argument("--full-release-notes-url", default="")
     parser.add_argument("--sign-update", required=True)
     parser.add_argument("--private-key-file", default="")
     parser.add_argument("--title", default="Sukurini")
@@ -139,6 +156,8 @@ def main():
         fail("archive_missing path=%s" % args.archive)
     if not os.access(args.sign_update, os.X_OK):
         fail("sign_update_missing path=%s" % args.sign_update)
+
+    notes = load_release_notes(args.release_notes_file)
 
     signature, length = sign_archive(args.sign_update, args.archive, args.private_key_file)
     log("signed archive=%s bytes=%d" % (os.path.basename(args.archive), length))
@@ -156,7 +175,7 @@ def main():
         log("replaced existing short=%s build=%s count=%d" % (args.short_version, args.version, replaced))
 
     published = datetime.now(timezone.utc)
-    channel.append(build_item(args, signature, length, published))
+    channel.append(build_item(args, signature, length, published, notes))
 
     items = channel.findall("item")
     for existing in items:
