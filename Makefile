@@ -22,7 +22,7 @@ SPARKLE_VERSION_DIR := $(SPARKLE_DEST)/Versions/B
 SPARKLE_TOOLS := .build/artifacts/sparkle/Sparkle/bin
 DMG := dist/$(APP)-$(VERSION).dmg
 
-.PHONY: build bundle sign dmg run dev logs install fixtures stop clean upload-symbols
+.PHONY: build bundle sign dmg run dev logs install fixtures stop clean upload-symbols changelog notes
 
 build:
 	$(SWIFT_RELEASE)
@@ -99,6 +99,17 @@ upload-symbols: sign
 	"$(UPLOAD_SYMBOLS)" -gsp "$(GOOGLE_PLIST)" -p mac -val -- "$$DSYM" && \
 	"$(UPLOAD_SYMBOLS)" -gsp "$(GOOGLE_PLIST)" -p mac -- "$$DSYM" && \
 	echo "uploaded dsym uuid=$$APP_UUID"
+
+changelog:
+	@test -n "$(VERSION)" || { echo "version missing, VERSION file is empty or absent"; exit 1; }
+	python3 Scripts/release-notes.py --version $(VERSION) --changelog CHANGELOG.md
+
+notes:
+	@test -n "$(VERSION)" || { echo "version missing, VERSION file is empty or absent"; exit 1; }
+	@TMP="$$(mktemp "$${TMPDIR:-/tmp}/sukurini-notes.XXXXXX")"; \
+	python3 Scripts/release-notes.py --version $(VERSION) --notes "$$TMP" >/dev/null; \
+	cat "$$TMP"; \
+	rm -f "$$TMP"
 
 stop:
 	-pkill -x $(APP)
