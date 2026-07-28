@@ -80,15 +80,7 @@ enum Telemetry {
             return
         }
 
-        Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
-
         Analytics.setUserID(nil)
-        Analytics.setConsent([
-            .analyticsStorage: .granted,
-            .adStorage: .denied,
-            .adUserData: .denied,
-            .adPersonalization: .denied
-        ])
 
         lock.lock()
         isConfigured = true
@@ -97,7 +89,7 @@ enum Telemetry {
         observeSetting()
         applyCollectionSetting(reason: Self.startReason)
 
-        Log.telemetry.info("started project=\(options.projectID ?? "unknown", privacy: .public) crashlytics=enabled analytics=\(AppSettings.shared.analyticsEnabled, privacy: .public)")
+        Log.telemetry.info("started project=\(options.projectID ?? "unknown", privacy: .public) collection=\(AppSettings.shared.analyticsEnabled, privacy: .public)")
 
         logLaunch()
     }
@@ -160,14 +152,24 @@ enum Telemetry {
             return
         }
 
+        /* Crash reporting rides the same switch as analytics. Two toggles would
+           mean explaining which one covers what, and one that quietly stays on
+           is worse than no switch at all. */
+        Analytics.setConsent([
+            .analyticsStorage: enabled ? .granted : .denied,
+            .adStorage: .denied,
+            .adUserData: .denied,
+            .adPersonalization: .denied
+        ])
         Analytics.setAnalyticsCollectionEnabled(enabled)
+        Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(enabled)
 
         if !enabled, wasCollecting {
             Analytics.resetAnalyticsData()
             Log.telemetry.notice("analytics data reset after opt out")
         }
 
-        Log.telemetry.info("analytics collection applied value=\(enabled, privacy: .public) reason=\(reason, privacy: .public)")
+        Log.telemetry.info("collection applied value=\(enabled, privacy: .public) analytics=\(enabled, privacy: .public) crashlytics=\(enabled, privacy: .public) reason=\(reason, privacy: .public)")
 
         guard enabled, !wasCollecting, reason != Self.startReason else { return }
         log(.settingChanged, ["setting": "analytics", "state": flag(true)])

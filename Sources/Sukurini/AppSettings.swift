@@ -303,7 +303,7 @@ final class AppSettings {
     }
 
     var analyticsEnabled: Bool {
-        get { defaults.object(forKey: Key.analyticsEnabled) as? Bool ?? true }
+        get { defaults.object(forKey: Key.analyticsEnabled) as? Bool ?? false }
         set {
             guard newValue != analyticsEnabled else { return }
             defaults.set(newValue, forKey: Key.analyticsEnabled)

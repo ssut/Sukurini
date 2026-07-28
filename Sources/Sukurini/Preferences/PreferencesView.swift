@@ -72,7 +72,7 @@ struct PreferencesView: View {
     @State private var updateAvailability = UpdateCoordinator.Availability.notBundled
     @State private var lastUpdateCheck: Date?
     @State private var language = AppSettings.shared.language
-    @State private var analyticsEnabled = true
+    @State private var analyticsEnabled = false
     @ObservedObject private var localization = LocalizationCenter.shared
 
     init(
