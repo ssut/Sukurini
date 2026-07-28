@@ -38,6 +38,20 @@
     console.info("release status=fallback reason=" + reason);
   }
 
+  /* The release workflow ships a notarized .dmg. .zip stays as a second choice
+     so a release cut before that switch still resolves to a real download
+     instead of dropping the visitor on the releases page. */
+  var ASSET_ORDER = [/\.dmg$/i, /\.zip$/i];
+
+  function pickAsset(assets) {
+    var found = null;
+    ASSET_ORDER.some(function (pattern) {
+      found = assets.filter(function (item) { return pattern.test(item.name || ""); })[0];
+      return Boolean(found);
+    });
+    return found;
+  }
+
   function applyRelease(data) {
     var version = String(data.tag_name || "").replace(/^v/, "");
     if (!version) {
@@ -45,18 +59,19 @@
       return;
     }
     var assets = Array.isArray(data.assets) ? data.assets : [];
-    var asset = assets.filter(function (item) { return /\.zip$/i.test(item.name || ""); })[0];
+    var asset = pickAsset(assets);
     if (asset && asset.browser_download_url) {
       document.getElementById("download").href = asset.browser_download_url;
       releaseState = {
         kind: "version",
         version: version,
-        meta: version + " · " + formatSize(asset.size) + " · Apache-2.0"
+        meta: formatSize(asset.size) + " · Apache-2.0"
       };
-      console.info("release status=resolved version=" + version + " asset=" + asset.name);
+      console.info("release status=resolved version=" + version +
+        " asset=" + asset.name + " bytes=" + asset.size);
     } else {
       document.getElementById("download").href = data.html_url || RELEASES_URL;
-      releaseState = { kind: "version", version: version, meta: version + " · Apache-2.0" };
+      releaseState = { kind: "version", version: version, meta: "Apache-2.0" };
       console.info("release status=resolved_without_asset version=" + version);
     }
     paintDownload();
