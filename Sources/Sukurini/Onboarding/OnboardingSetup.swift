@@ -4,6 +4,7 @@ enum OnboardingRecommendationKind: String, CaseIterable {
     case thumbnail
     case folder
     case webp
+    case telemetry
 }
 
 struct OnboardingRecommendation: Identifiable {
@@ -18,6 +19,7 @@ struct OnboardingRecommendation: Identifiable {
 struct OnboardingOutcome {
     var thumbnailDisabled = false
     var webpEnabled = false
+    var telemetryEnabled = false
     var stagedFolder: URL?
     var movedCount = 0
     var moveSource: URL?
@@ -57,6 +59,12 @@ enum OnboardingSetup {
                 title: L10n.Convert.enable,
                 detail: L10n.Onboarding.recommendWebPDetail(settings.webpDisposal),
                 satisfied: settings.webpConversionEnabled
+            ),
+            OnboardingRecommendation(
+                kind: .telemetry,
+                title: L10n.Onboarding.recommendTelemetry,
+                detail: L10n.Onboarding.recommendTelemetryDetail,
+                satisfied: settings.analyticsEnabled
             )
         ]
 
@@ -79,6 +87,17 @@ enum OnboardingSetup {
         }
         AppSettings.shared.webpConversionEnabled = true
         Log.settings.info("onboarding webp enabled disposal=\(AppSettings.shared.webpDisposal.rawValue, privacy: .public)")
+    }
+
+    /* Reached only from the recommendations step, so collection starts the
+       moment someone leaves the row checked and never before that. */
+    static func enableTelemetry() {
+        guard !AppSettings.shared.analyticsEnabled else {
+            Log.settings.info("onboarding telemetry skipped reason=already_enabled")
+            return
+        }
+        AppSettings.shared.analyticsEnabled = true
+        Log.settings.info("onboarding telemetry enabled")
     }
 
     static func createRecommendedFolder() -> URL? {

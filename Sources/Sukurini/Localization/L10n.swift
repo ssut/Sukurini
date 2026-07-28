@@ -1069,6 +1069,20 @@ extension L10n {
                 ja: "macOS はプレビューが消えるまでの 5 秒ほど、スクリーンショットを持ったままにします。オフにすればすぐ保存されます。"
             )
         }
+        static var recommendTelemetry: String {
+            tr(
+                en: "Send anonymous usage and crash reports",
+                ko: "익명 사용 통계와 오류 보고 보내기",
+                ja: "匿名の利用統計とクラッシュ報告を送る"
+            )
+        }
+        static var recommendTelemetryDetail: String {
+            tr(
+                en: "Counts only — never file names, search words, or image contents. You can turn it off any time in Settings.",
+                ko: "숫자만 보내요. 파일 이름, 검색어, 이미지 내용은 절대 보내지 않아요. 설정에서 언제든 끌 수 있어요.",
+                ja: "送るのは数だけです。ファイル名や検索した言葉、画像の中身は一切送りません。設定でいつでもオフにできます。"
+            )
+        }
         static func recommendFolder(_ path: String) -> String {
             tr(
                 en: "Keep screenshots in \(path)",

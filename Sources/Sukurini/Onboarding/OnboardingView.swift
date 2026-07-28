@@ -361,6 +361,8 @@ struct OnboardingView: View {
             return "folder.badge.plus"
         case .webp:
             return "archivebox.fill"
+        case .telemetry:
+            return "chart.bar.fill"
         }
     }
 
@@ -372,6 +374,8 @@ struct OnboardingView: View {
             return .blue
         case .webp:
             return .green
+        case .telemetry:
+            return .pink
         }
     }
 
@@ -847,9 +851,13 @@ struct OnboardingView: View {
             OnboardingSetup.enableWebP()
             result.webpEnabled = true
         }
+        if chosen.contains(.telemetry) {
+            OnboardingSetup.enableTelemetry()
+            result.telemetryEnabled = true
+        }
 
         outcome = result
-        Log.settings.info("onboarding recommendations applied chosen=\(chosen.map(\.rawValue).sorted().joined(separator: ","), privacy: .public) thumbnail=\(result.thumbnailDisabled, privacy: .public) webp=\(result.webpEnabled, privacy: .public) folder=\(result.stagedFolder?.path ?? "none", privacy: .public) failures=\(result.failures.count, privacy: .public)")
+        Log.settings.info("onboarding recommendations applied chosen=\(chosen.map(\.rawValue).sorted().joined(separator: ","), privacy: .public) thumbnail=\(result.thumbnailDisabled, privacy: .public) webp=\(result.webpEnabled, privacy: .public) telemetry=\(result.telemetryEnabled, privacy: .public) folder=\(result.stagedFolder?.path ?? "none", privacy: .public) failures=\(result.failures.count, privacy: .public)")
 
         guard let target else {
             finishApply()
