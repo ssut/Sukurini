@@ -74,6 +74,11 @@ def item_version(item):
     return node.text if node is not None else None
 
 
+def item_short_version(item):
+    node = item.find(sparkle_tag("shortVersionString"))
+    return node.text if node is not None else None
+
+
 def item_sort_key(item):
     epoch = datetime.fromtimestamp(0, tz=timezone.utc)
     node = item.find("pubDate")
@@ -142,11 +147,13 @@ def main():
 
     replaced = 0
     for existing in channel.findall("item"):
-        if item_version(existing) == args.version:
+        same_build = item_version(existing) == args.version
+        same_release = item_short_version(existing) == args.short_version
+        if same_build or same_release:
             channel.remove(existing)
             replaced += 1
     if replaced:
-        log("replaced existing version=%s count=%d" % (args.version, replaced))
+        log("replaced existing short=%s build=%s count=%d" % (args.short_version, args.version, replaced))
 
     published = datetime.now(timezone.utc)
     channel.append(build_item(args, signature, length, published))
