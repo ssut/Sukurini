@@ -36,8 +36,17 @@ final class PNGExporter {
         isActive && url.pathExtension.lowercased() == ScreenshotFile.convertedExtension
     }
 
-    func pasteboardWriter(for url: URL) -> NSPasteboardWriting {
-        guard handles(url) else { return url as NSURL }
+    private func shouldExport(_ url: URL, forced: Bool) -> Bool {
+        guard forced else { return handles(url) }
+        guard url.pathExtension.lowercased() != ScreenshotFile.pngExtension else {
+            Log.convert.debug("png export forced skipped reason=already_png file=\(url.lastPathComponent, privacy: .public)")
+            return false
+        }
+        return true
+    }
+
+    func pasteboardWriter(for url: URL, forcingPNG forced: Bool = false) -> NSPasteboardWriting {
+        guard shouldExport(url, forced: forced) else { return url as NSURL }
         guard let exported = exportedURL(for: url) else {
             Log.convert.error("png export unavailable, copying original file=\(url.lastPathComponent, privacy: .public)")
             return url as NSURL
@@ -54,6 +63,7 @@ final class PNGExporter {
         } else {
             Log.convert.error("png export unreadable file=\(exported.lastPathComponent, privacy: .public)")
         }
+        Log.convert.info("png export writer ready file=\(exported.lastPathComponent, privacy: .public) forced=\(forced, privacy: .public)")
         return item
     }
 
@@ -67,13 +77,13 @@ final class PNGExporter {
         return writers
     }
 
-    func warm(_ url: URL) {
-        guard handles(url) else { return }
+    func warm(_ url: URL, forcingPNG forced: Bool = false) {
+        guard shouldExport(url, forced: forced) else { return }
         warmQueue.async { [weak self] in
             guard let self else { return }
-            guard self.handles(url) else { return }
+            guard self.shouldExport(url, forced: forced) else { return }
             guard self.exportedURL(for: url) != nil else { return }
-            Log.convert.debug("png export warmed file=\(url.lastPathComponent, privacy: .public)")
+            Log.convert.debug("png export warmed file=\(url.lastPathComponent, privacy: .public) forced=\(forced, privacy: .public)")
         }
     }
 

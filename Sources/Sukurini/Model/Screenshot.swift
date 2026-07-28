@@ -33,7 +33,8 @@ struct StoreChange {
 
 enum ScreenshotFile {
     static let allowedExtensions: Set<String> = ["png", "webp", "heic", "heif", "jpg", "jpeg", "tif", "tiff", "pdf", "gif"]
-    static let convertibleExtension = "png"
+    static let pngExtension = "png"
+    static let convertibleExtension = pngExtension
     static let convertedExtension = "webp"
 
     static func isEligible(_ url: URL) -> Bool {

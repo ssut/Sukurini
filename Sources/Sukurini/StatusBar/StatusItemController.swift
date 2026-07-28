@@ -131,6 +131,7 @@ final class StatusItemController: NSObject {
         let origin = event.locationInWindow
         var travelled: CGFloat = 0
         var crossedThreshold = false
+        var forcesPNG = false
         var samples = 0
         while let next = window.nextEvent(matching: [.leftMouseUp, .leftMouseDragged]) {
             if next.type == .leftMouseUp {
@@ -142,10 +143,11 @@ final class StatusItemController: NSObject {
             travelled = (dx * dx + dy * dy).squareRoot()
             if travelled >= Metrics.dragThreshold {
                 crossedThreshold = true
+                forcesPNG = next.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.option)
                 break
             }
         }
-        Log.statusItem.info("tracking finished drag=\(crossedThreshold, privacy: .public) travelled=\(Int(travelled), privacy: .public) samples=\(samples, privacy: .public)")
+        Log.statusItem.info("tracking finished drag=\(crossedThreshold, privacy: .public) travelled=\(Int(travelled), privacy: .public) samples=\(samples, privacy: .public) forcesPNG=\(forcesPNG, privacy: .public)")
 
         guard crossedThreshold else {
             completeClick(wasVisibleAtPress: wasVisibleAtPress, button: button)
@@ -155,7 +157,7 @@ final class StatusItemController: NSObject {
             Log.drag.info("drag not started reason=no_screenshot")
             return
         }
-        beginDrag(payload: payload, event: event, button: button)
+        beginDrag(payload: payload, event: event, button: button, forcesPNG: forcesPNG)
     }
 
     private func completeClick(wasVisibleAtPress: Bool, button: NSStatusBarButton) {
@@ -168,7 +170,7 @@ final class StatusItemController: NSObject {
 
     private func warmDragAssets() {
         guard let latest = store.latest else { return }
-        PNGExporter.shared.warm(latest.url)
+        PNGExporter.shared.warm(latest.url, forcingPNG: true)
         guard thumbnails.cachedThumbnail(for: latest.url, maxPixel: Metrics.dragThumbnailPixel) == nil else { return }
         thumbnails.thumbnail(for: latest.url, maxPixel: Metrics.dragThumbnailPixel, lowPriority: true) { url, image in
             Log.drag.debug("drag thumbnail warmed file=\(url.lastPathComponent, privacy: .public) ok=\(image != nil, privacy: .public)")
@@ -190,9 +192,10 @@ final class StatusItemController: NSObject {
         return payload
     }
 
-    private func beginDrag(payload: DragPayload, event: NSEvent, button: NSStatusBarButton) {
+    private func beginDrag(payload: DragPayload, event: NSEvent, button: NSStatusBarButton, forcesPNG: Bool) {
         icon?.clear(reason: "dragged")
-        let item = NSDraggingItem(pasteboardWriter: PNGExporter.shared.pasteboardWriter(for: payload.url))
+        let writer = PNGExporter.shared.pasteboardWriter(for: payload.url, forcingPNG: forcesPNG)
+        let item = NSDraggingItem(pasteboardWriter: writer)
         let frame = NSRect(
             x: button.bounds.midX - payload.size.width / 2,
             y: button.bounds.midY - payload.size.height / 2,
@@ -204,7 +207,7 @@ final class StatusItemController: NSObject {
         let session = button.beginDraggingSession(with: [item], event: event, source: self)
         session.animatesToStartingPositionsOnCancelOrFail = true
         session.draggingFormation = .none
-        Log.drag.info("drag session started file=\(payload.name, privacy: .public) cached=\(payload.cached, privacy: .public)")
+        Log.drag.info("drag session started file=\(payload.name, privacy: .public) cached=\(payload.cached, privacy: .public) forcesPNG=\(forcesPNG, privacy: .public) png=\(writer is NSPasteboardItem, privacy: .public)")
     }
 
     private func presentMenu(from button: NSStatusBarButton) {
