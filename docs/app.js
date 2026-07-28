@@ -714,7 +714,53 @@
   var arrows = Array.prototype.slice.call(document.querySelectorAll(".car-arrow"));
   var typeTimer = null;
 
+  var SWAP_MS = 220;
+  var TYPE_SPEED = 38;
+  var SEARCH_DWELL = 3400;
+  var SWEEP_LEAD = 600;
+  var SWEEP_MS = 3600;
+  var SWEEP_HOLD = 1000;
+  var BROWSE_DWELL = SWAP_MS + SWEEP_LEAD + SWEEP_MS + SWEEP_HOLD;
+
+  var sweepLead = null;
+  var sweepFrame = null;
+
   tiles.forEach(function (tile) { tile.home = tile.parentNode; });
+
+  function stopSweep() {
+    clearTimeout(sweepLead);
+    sweepLead = null;
+    if (sweepFrame) cancelAnimationFrame(sweepFrame);
+    sweepFrame = null;
+  }
+
+  function sweepBrowse() {
+    stopSweep();
+    if (reduced.matches || !panelBody) return;
+    panelBody.scrollTop = 0;
+    sweepLead = setTimeout(function () {
+      sweepLead = null;
+      var span = panelBody.scrollHeight - panelBody.clientHeight;
+      if (span <= 0) {
+        console.info("gallery sweep=skipped reason=no_overflow");
+        return;
+      }
+      console.info("gallery sweep=start span=" + span + "px duration=" + SWEEP_MS + "ms");
+      var started = null;
+      sweepFrame = requestAnimationFrame(function frame(now) {
+        if (started === null) started = now;
+        var p = Math.min(1, (now - started) / SWEEP_MS);
+        var eased = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+        panelBody.scrollTop = span * eased;
+        if (p < 1) {
+          sweepFrame = requestAnimationFrame(frame);
+          return;
+        }
+        sweepFrame = null;
+        console.info("gallery sweep=done hold=" + SWEEP_HOLD + "ms");
+      });
+    }, SWEEP_LEAD);
+  }
 
   function swap(mutate) {
     if (reduced.matches) { mutate(); return; }
@@ -722,10 +768,11 @@
     setTimeout(function () {
       mutate();
       panelBody.classList.remove("swapping");
-    }, 220);
+    }, SWAP_MS);
   }
 
   function showBrowsing() {
+    stopSweep();
     typed.textContent = "";
     placeholder.hidden = false;
     caret.hidden = true;
@@ -738,12 +785,15 @@
       tile.hidden = false;
       tile.classList.toggle("selected", index === 0);
     });
-    panelBody.classList.remove("locked");
+    panelBody.classList.toggle("locked", !reduced.matches);
     panelBody.scrollTop = 0;
-    console.info("gallery state=browsing tiles=" + tiles.length + " scrollable=true");
+    console.info("gallery state=browsing tiles=" + tiles.length +
+      " scroll=" + (reduced.matches ? "manual" : "auto"));
+    sweepBrowse();
   }
 
   function showResults(query, hits) {
+    stopSweep();
     var wanted = hits ? hits.split(",") : [];
     var matched = tiles.filter(function (tile) {
       return wanted.indexOf(tile.getAttribute("data-shot")) !== -1;
@@ -779,7 +829,7 @@
       if (index < query.length) return;
       clearInterval(typeTimer);
       swap(function () { showResults(query, hits); });
-    }, 55);
+    }, TYPE_SPEED);
   }
 
   function selectTab(tab) {
@@ -802,49 +852,70 @@
     typeQuery(query, hits);
   }
 
-  function step(direction) {
-    var current = tabs.filter(function (tab) {
+  function currentTab() {
+    return tabs.filter(function (tab) {
       return tab.getAttribute("aria-selected") === "true";
     })[0];
-    var index = tabs.indexOf(current);
+  }
+
+  function isBrowsing(tab) {
+    return !(tab && tab.getAttribute("data-q"));
+  }
+
+  function step(direction) {
+    var index = tabs.indexOf(currentTab());
     var next = (index + direction + tabs.length) % tabs.length;
     selectTab(tabs[next]);
   }
 
   var autoTimer = null;
   var autoStopped = false;
-
-  function stopAuto() {
-    autoStopped = true;
-    clearInterval(autoTimer);
-    autoTimer = null;
-    if (carousel) carousel.classList.remove("running");
-  }
-
-  var CAROUSEL_INTERVAL = 5200;
   var carousel = document.querySelector(".carousel");
 
-  function armProgress() {
+  function armProgress(dwell) {
     if (!carousel) return;
     var fill = carousel.querySelector(".car-progress i");
     carousel.classList.remove("running");
     void fill.offsetWidth;
-    carousel.style.setProperty("--car-interval", CAROUSEL_INTERVAL + "ms");
+    carousel.style.setProperty("--car-interval", dwell + "ms");
     carousel.classList.add("running");
   }
 
-  function startAuto() {
-    if (autoStopped || autoTimer || reduced.matches) return;
-    armProgress();
-    autoTimer = setInterval(function () {
+  /* Browsing holds long enough for the gallery to scroll itself to the bottom
+     and rest there; the search slides only need the query typed out and read. */
+  function scheduleAuto() {
+    if (autoStopped || reduced.matches) return;
+    clearTimeout(autoTimer);
+    var dwell = isBrowsing(currentTab()) ? BROWSE_DWELL : SEARCH_DWELL;
+    armProgress(dwell);
+    autoTimer = setTimeout(function () {
       step(1);
-      armProgress();
-    }, CAROUSEL_INTERVAL);
+      scheduleAuto();
+    }, dwell);
+    console.info("carousel slide=" + tabs.indexOf(currentTab()) + " dwell=" + dwell + "ms");
+  }
+
+  /* The sweep re-arms on every return to view even once the reader has taken
+     the carousel over by hand, otherwise a gallery frozen mid-scroll would
+     have no way back down. */
+  function startAuto() {
+    if (reduced.matches) return;
+    if (isBrowsing(currentTab())) sweepBrowse();
+    if (autoStopped || autoTimer) return;
+    scheduleAuto();
+  }
+
+  function stopAuto() {
+    autoStopped = true;
+    clearTimeout(autoTimer);
+    autoTimer = null;
+    if (carousel) carousel.classList.remove("running");
   }
 
   function pauseAuto() {
-    clearInterval(autoTimer);
+    clearTimeout(autoTimer);
     autoTimer = null;
+    stopSweep();
     if (carousel) carousel.classList.remove("running");
   }
 
@@ -873,14 +944,16 @@
 
     showBrowsing();
     document.addEventListener("sukurini:lang", function () {
-      var active = tabs.filter(function (tab) {
-        return tab.getAttribute("aria-selected") === "true";
-      })[0];
+      var active = currentTab();
       clearInterval(typeTimer);
       var query = active && active.getAttribute("data-qkey");
-      if (!query) { showBrowsing(); return; }
-      typed.textContent = t(query);
-      showResults(t(query), active.getAttribute("data-hits"));
+      if (query) {
+        typed.textContent = t(query);
+        showResults(t(query), active.getAttribute("data-hits"));
+      } else {
+        showBrowsing();
+      }
+      if (autoTimer) scheduleAuto();
     });
   }
 

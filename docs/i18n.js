@@ -281,8 +281,8 @@ window.SUKURINI_I18N = {
   },
   "panel.tab.text": {
     "en": "Text · invoice",
-    "ko": "글자 · 청구서",
-    "ja": "文字 · 請求書"
+    "ko": "글자 · invoice",
+    "ja": "文字・invoice"
   },
   "panel.tab.image": {
     "en": "Image · a blue bar chart",
@@ -291,8 +291,8 @@ window.SUKURINI_I18N = {
   },
   "panel.query.text": {
     "en": "invoice",
-    "ko": "청구서",
-    "ja": "請求書"
+    "ko": "invoice",
+    "ja": "invoice"
   },
   "panel.query.image": {
     "en": "a blue bar chart",

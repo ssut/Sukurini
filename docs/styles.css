@@ -63,6 +63,8 @@
           sans-serif;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
   --wide: 1000px;
+  --ctl-h: 30px;
+  --nav-h: 70px;
 }
 
 @media (prefers-color-scheme: light) {
@@ -140,10 +142,23 @@ code {
   display: flex;
   align-items: center;
   gap: 28px;
+  height: var(--nav-h);
   max-width: var(--wide);
   margin: 0 auto;
-  padding: 20px 28px;
+  padding: 0 28px;
   font-size: 14px;
+}
+
+/* One height for the whole right-hand group, so the star widget, the language
+   switch and the theme toggle sit on a single baseline in every language. */
+.ghstar, .lang, .theme { height: var(--ctl-h); flex: none; }
+
+/* Narrow screens cannot fit the row, and the controls no longer squash to make
+   room, so they wrap onto a second line instead of pushing out a scrollbar.
+   Every label in here is the same width in all three languages, so the wrapped
+   header still cannot change height when the reader switches. */
+@media (max-width: 560px) {
+  .nav { height: auto; flex-wrap: wrap; gap: 14px; padding: 14px 16px; }
 }
 
 .brand {
@@ -159,7 +174,7 @@ code {
   align-items: center;
   gap: 7px;
   margin-left: auto;
-  padding: 5px 12px;
+  padding: 0 12px;
   border-radius: 8px;
   border: 1px solid var(--sep);
   color: var(--fg-2);
@@ -180,7 +195,9 @@ code {
 .theme {
   display: inline-flex;
   align-items: center;
-  padding: 5px;
+  justify-content: center;
+  width: var(--ctl-h);
+  padding: 0;
   border-radius: 7px;
   border: 1px solid var(--sep);
   background: transparent;
@@ -1646,6 +1663,11 @@ p:lang(ja) { max-width: 34em; }
 .stage-lede:lang(ko), .stage-lede:lang(ja) { max-width: 34em; }
 .origin p:lang(ko), .origin p:lang(ja) { max-width: 36em; }
 .ob-sub:lang(ko), .ob-sub:lang(ja) { max-width: 26em; }
+
+/* The header holds neutral metrics in every language. Without this the
+   per-language line-height above grows the nav and every section below it
+   jumps the moment the reader switches languages. */
+.nav, .nav :lang(ko), .nav :lang(ja) { line-height: 1; letter-spacing: normal; }
 
 /* The faux macOS chrome keeps the real system font and neutral metrics in
    every language, otherwise the mockups stop reading as macOS. */
