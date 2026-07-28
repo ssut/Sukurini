@@ -7,21 +7,12 @@
     <language>en</language>
     <item>
       <title>1.0.0</title>
-      <pubDate>Tue, 28 Jul 2026 05:05:29 +0000</pubDate>
-      <sparkle:version>2</sparkle:version>
+      <pubDate>Tue, 28 Jul 2026 05:10:12 +0000</pubDate>
+      <sparkle:version>3</sparkle:version>
       <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <sparkle:releaseNotesLink>https://github.com/ssut/Sukurini/releases/tag/v1.0.0</sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/ssut/Sukurini/releases/download/v1.0.0/Sukurini-1.0.0.dmg" length="4135988" type="application/octet-stream" sparkle:edSignature="werKarhxh/FuGaIU13YEyeCVzHDx9c6Ar8vSwWanhX/x0KqeLyWIUhmD9iYNvG27kyPaFqipJft6nuf+Dwe/Cg==" />
-    </item>
-    <item>
-      <title>1.0.0</title>
-      <pubDate>Tue, 28 Jul 2026 03:55:18 +0000</pubDate>
-      <sparkle:version>1</sparkle:version>
-      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>https://github.com/ssut/Sukurini/releases/tag/v1.0.0</sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/ssut/Sukurini/releases/download/v1.0.0/Sukurini-1.0.0.zip" length="4184943" type="application/octet-stream" sparkle:edSignature="2PC5dBM17jiDDn0dS7DOBcy7qaRBaqkdy7JW8+tH3ptDdttJIb3hkIND2Mj4CWyCzOvTRLbxcBNtWdWzlAaHBg==" />
+      <enclosure url="https://github.com/ssut/Sukurini/releases/download/v1.0.0/Sukurini-1.0.0.dmg" length="4136022" type="application/octet-stream" sparkle:edSignature="qM7FyXFlmxH0hLmVKUGoTqg8hb7JydYsxgIFBB2YE0eaRhjuKkz1cxWFutIjnhMdbu5smqIXYvs0Nb+uFHuwAQ==" />
     </item>
   </channel>
 </rss>
