@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Sukurini">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4D8CF5"/>
+      <stop offset="1" stop-color="#294FC7"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0.5" cy="0.26" r="0.72">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#body)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#sheen)"/>
+  <rect x="104" y="104" width="816" height="816" rx="180" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="8"/>
+  <circle cx="512" cy="512" r="185.4" fill="none" stroke="#ffffff" stroke-width="57.8"/>
+  <circle cx="512" cy="512" r="84.5" fill="#ffffff"/>
+</svg>

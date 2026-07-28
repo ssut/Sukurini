@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sukurini — a screenshot shelf for the macOS menu bar</title>
+<meta name="description" content="A macOS menu bar app that watches your screenshot folder, tells you when a new one lands, and lets you drag it anywhere without opening Finder. Text and image search run on your Mac.">
+<meta name="theme-color" content="#151517" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<link rel="canonical" href="https://ssut.github.io/Sukurini/">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Sukurini — a screenshot shelf for the macOS menu bar">
+<meta property="og:description" content="Watches your screenshot folder, tells you when a new one lands, and lets you drag it anywhere without opening Finder.">
+<meta property="og:url" content="https://ssut.github.io/Sukurini/">
+<meta property="og:image" content="https://ssut.github.io/Sukurini/icon.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <a class="brand" href="#main">
+    <img src="icon.svg" alt="" width="22" height="22">
+    <span>Sukurini</span>
+  </a>
+  <a class="ghstar" href="https://github.com/ssut/Sukurini" aria-label="Star Sukurini on GitHub">
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
+      <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/>
+    </svg>
+    <span>Star</span>
+    <b id="ghstar-count" hidden></b>
+  </a>
+    <span class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="ko" aria-pressed="false">한국어</button>
+      <button type="button" data-lang="ja" aria-pressed="false">日本語</button>
+    </span>
+    <button type="button" class="theme" id="theme" aria-label="Switch to light appearance">
+      <svg class="theme-sun" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <circle cx="10" cy="10" r="3.6"/>
+        <path d="M10 1.4v2.2M10 16.4v2.2M18.6 10h-2.2M3.6 10H1.4M16.1 3.9l-1.6 1.6M5.5 14.5l-1.6 1.6M16.1 16.1l-1.6-1.6M5.5 5.5 3.9 3.9"/>
+      </svg>
+      <svg class="theme-moon" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 12.3A7.5 7.5 0 0 1 7.7 3a7.5 7.5 0 1 0 9.3 9.3Z"/>
+      </svg>
+    </button>
+</header>
+
+<main id="main">
+
+  <section class="intro">
+    <h1>A screenshot shelf that lives in the menu bar.</h1>
+    <p>
+      Sukurini (スクリーニー) watches your screenshot folder. When a new capture lands, a dot springs out of the
+      menu bar icon. Press it and drag — the screenshot comes with your cursor. Finder never opens.
+    </p>
+    <div class="cta">
+      <a class="btn" id="download" href="https://github.com/ssut/Sukurini/releases/latest">
+        <span id="download-label">Download</span>
+      </a>
+      <span class="req">macOS 14+ · Apple Silicon · <span id="release-meta">Apache-2.0</span></span>
+    </div>
+  </section>
+
+  <section id="capture" class="stage">
+    <h2>Capture, then drag it straight out of the menu bar.</h2>
+    <p class="stage-lede">
+      No Finder window, no Downloads folder, no hunting for the newest file. The ring tells you the
+      screenshot arrived; you press it and pull the file wherever it needs to go. Using it clears
+      the ring.
+    </p>
+
+    <div class="scene-wrap">
+      <div class="scene" data-scene="capture" role="img"
+           aria-label="A screen recording: a region of the screen is captured, the menu bar ring pulses, the cursor drags the new screenshot out of the ring and drops it into a message window, where it appears as an attachment.">
+
+        <div class="scene-bar">
+          <span class="scene-app">Finder</span>
+          <span class="scene-menu">File</span>
+          <span class="scene-menu">Edit</span>
+          <span class="scene-menu">View</span>
+          <span class="scene-gap"></span>
+          <span class="sk-icon">
+            <span class="sk-ripple"></span><span class="sk-ripple"></span>
+            <span class="sk-ring"></span>
+            <span class="sk-dot"></span>
+          </span>
+          <svg class="scene-glyph" viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+            <path d="M1.2 4.1a10 10 0 0 1 13.6 0"/><path d="M3.7 6.9a6.3 6.3 0 0 1 8.6 0"/><path d="M6.3 9.6a2.5 2.5 0 0 1 3.4 0"/>
+          </svg>
+          <svg class="scene-glyph" viewBox="0 0 26 12" width="23" height="11" fill="none" stroke="currentColor">
+            <rect x="0.7" y="0.7" width="21" height="10.6" rx="3.2" stroke-width="1.2" opacity="0.5"/>
+            <rect x="2.6" y="2.6" width="13.5" height="6.8" rx="1.8" fill="currentColor" stroke="none"/>
+            <path d="M23.6 4.3v3.4" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+          </svg>
+          <span class="scene-clock">Sun 2:14</span>
+        </div>
+
+        <div class="scene-desk">
+
+          <div class="card">
+            <div class="card-title">Weekly active</div>
+            <div class="card-chart"></div>
+          </div>
+
+          <div class="win">
+            <div class="win-bar">
+              <i class="tl tl-r"></i><i class="tl tl-y"></i><i class="tl tl-g"></i>
+              <span class="win-title">New Message</span>
+            </div>
+            <div class="win-body">
+              <div class="win-field"><b>To</b><span>team@example.com</span></div>
+              <div class="win-field"><b>Subject</b><span>This week's numbers</span></div>
+              <div class="win-drop">
+                <span class="win-hint">Here you go —</span>
+                <span class="attach">
+                  <span class="attach-thumb"></span>
+                  <span class="attach-meta">
+                    <b>Screenshot 2026-07-26 at 14.02.11.webp</b>
+                    <i>312 × 208 · 84 KB</i>
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sel"></div>
+          <div class="flash"></div>
+
+          <div class="cursor">
+            <svg class="cur cur-cross" viewBox="0 0 26 26" width="26" height="26">
+              <g stroke="#fff" stroke-width="3.2" stroke-linecap="butt">
+                <path d="M13 0v9M13 17v9M0 13h9M17 13h9"/>
+              </g>
+              <g stroke="#000" stroke-width="1.3">
+                <path d="M13 0v9M13 17v9M0 13h9M17 13h9"/>
+              </g>
+            </svg>
+            <svg class="cur cur-arrow" viewBox="0 0 13 20" width="13" height="20">
+              <path d="M1.2 1.1 1.2 15.9 5 12.4 7.4 18.1 9.7 17.1 7.3 11.5 11.5 11.2Z"
+                    fill="#000" stroke="#fff" stroke-width="1.15" stroke-linejoin="round"/>
+            </svg>
+            <span class="sel-size">0 × 0</span>
+            <span class="payload"></span>
+          </div>
+
+        </div>
+
+        <div class="caption">Ready</div>
+
+        <div class="replay-layer">
+          <button type="button">
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 10a7 7 0 1 1-2.2-5.1"/>
+              <path d="M17.4 2.6v4.2h-4.2"/>
+            </svg>
+            Replay
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section id="browse" class="stage stage-tight">
+    <h2>Or reach for ones you already took.</h2>
+    <p class="stage-lede">
+      Click the ring instead of dragging it and the gallery opens. ⌘-click to pick several,
+      then pull the whole set out in one go.
+    </p>
+
+    <div class="scene-wrap">
+      <div class="scene" data-scene="browse" role="img"
+           aria-label="A screen recording: the menu bar ring is clicked, the gallery opens, three screenshots are selected with command-click, and the whole set is dragged into a mail window as three attachments.">
+
+        <div class="scene-bar">
+          <span class="scene-app">Mail</span>
+          <span class="scene-menu">File</span>
+          <span class="scene-menu">Edit</span>
+          <span class="scene-menu">View</span>
+          <span class="scene-gap"></span>
+          <span class="sk-icon">
+            <span class="sk-ripple"></span><span class="sk-ripple"></span>
+            <span class="sk-ring"></span>
+            <span class="sk-dot"></span>
+          </span>
+          <svg class="scene-glyph" viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+            <path d="M1.2 4.1a10 10 0 0 1 13.6 0"/><path d="M3.7 6.9a6.3 6.3 0 0 1 8.6 0"/><path d="M6.3 9.6a2.5 2.5 0 0 1 3.4 0"/>
+          </svg>
+          <svg class="scene-glyph" viewBox="0 0 26 12" width="23" height="11" fill="none" stroke="currentColor">
+            <rect x="0.7" y="0.7" width="21" height="10.6" rx="3.2" stroke-width="1.2" opacity="0.5"/>
+            <rect x="2.6" y="2.6" width="13.5" height="6.8" rx="1.8" fill="currentColor" stroke="none"/>
+            <path d="M23.6 4.3v3.4" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+          </svg>
+          <span class="scene-clock">Sun 2:14</span>
+        </div>
+
+        <div class="scene-desk">
+
+          <div class="shelf">
+            <div class="shelf-header">
+              <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+                <circle cx="8.4" cy="8.4" r="5.6"/><path d="M12.6 12.6 17 17"/>
+              </svg>
+              <span>Searching in Screenshots</span>
+            </div>
+            <div class="shelf-body">
+              <div class="mini-day">Today</div>
+              <div class="mini-tiles">
+              <span class="mini-tile" data-shot="browser"></span>
+              <span class="mini-tile" data-shot="terminal"></span>
+              <span class="mini-tile" data-shot="chart"></span>
+              <span class="mini-tile" data-shot="chat"></span>
+              <span class="mini-tile" data-shot="code"></span>
+              <span class="mini-tile" data-shot="receipt"></span>
+              <span class="mini-tile" data-shot="map"></span>
+              <span class="mini-tile" data-shot="photo"></span>
+              </div>
+              <div class="mini-day">Yesterday</div>
+              <div class="mini-tiles">
+              <span class="mini-tile" data-shot="doc"></span>
+              <span class="mini-tile" data-shot="terminal"></span>
+              <span class="mini-tile" data-shot="chart"></span>
+              <span class="mini-tile" data-shot="browser"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="win win-mail">
+            <div class="win-bar">
+              <i class="tl tl-r"></i><i class="tl tl-y"></i><i class="tl tl-g"></i>
+              <span class="win-title">New Message</span>
+            </div>
+            <div class="win-body">
+              <div class="win-field"><b>To</b><span>design@example.com</span></div>
+              <div class="win-drop">
+                <span class="win-hint">The three I mentioned —</span>
+                <span class="attach"><span class="attach-thumb" data-shot="chart"></span><span class="attach-meta"><b>Screenshot 2026-07-26 at 14.02.11.webp</b><i>84 KB</i></span></span>
+                <span class="attach"><span class="attach-thumb" data-shot="terminal"></span><span class="attach-meta"><b>Screenshot 2026-07-26 at 11.47.03.webp</b><i>61 KB</i></span></span>
+                <span class="attach"><span class="attach-thumb" data-shot="receipt"></span><span class="attach-meta"><b>Screenshot 2026-07-25 at 19.20.58.webp</b><i>72 KB</i></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="cursor">
+            <svg class="cur cur-arrow" viewBox="0 0 13 20" width="13" height="20">
+              <path d="M1.2 1.1 1.2 15.9 5 12.4 7.4 18.1 9.7 17.1 7.3 11.5 11.5 11.2Z"
+                    fill="#000" stroke="#fff" stroke-width="1.15" stroke-linejoin="round"/>
+            </svg>
+            <span class="modkey">⌘</span>
+            <span class="payload payload-stack">
+              <i data-shot="receipt"></i><i data-shot="terminal"></i><i data-shot="chart"></i>
+              <b>3</b>
+            </span>
+          </div>
+
+        </div>
+
+        <div class="caption">Ready</div>
+
+        <div class="replay-layer">
+          <button type="button">
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 10a7 7 0 1 1-2.2-5.1"/><path d="M17.4 2.6v4.2h-4.2"/>
+            </svg>
+            Replay
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section id="panel" class="stage stage-tight">
+    <h2>Even when you barely remember it,<br>it's easy to find.</h2>
+    <p class="stage-lede">
+      Search the text inside your screenshots, or just describe* what one looked like.
+    </p>
+
+    <div class="desk">
+    <div class="panel">
+      <div class="panel-header">
+        <svg class="magnifier" viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+          <circle cx="8.4" cy="8.4" r="5.6"/>
+          <path d="M12.6 12.6 17 17"/>
+        </svg>
+        <span class="search-value" id="typed"></span><span class="caret" id="caret"></span>
+        <span class="placeholder" id="placeholder">Searching in Screenshots</span>
+        <span class="sort" id="sort" hidden>Relevance</span>
+        <span class="gear">
+          <svg viewBox="0 0 26 26" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6">
+            <circle cx="13" cy="13" r="3.4"/>
+            <path d="M13 2.6v3M13 20.4v3M23.4 13h-3M5.6 13h-3M20.4 5.6l-2.1 2.1M7.7 18.3l-2.1 2.1M20.4 20.4l-2.1-2.1M7.7 7.7 5.6 5.6" stroke-linecap="round"/>
+          </svg>
+        </span>
+      </div>
+      <div class="panel-body">
+        <div class="day" id="day-a">Today</div>
+        <div class="tiles" id="row-a">
+          <span class="tile selected" data-shot="browser"></span>
+          <span class="tile" data-shot="terminal"></span>
+          <span class="tile" data-shot="chart"></span>
+          <span class="tile" data-shot="chat"></span>
+          <span class="tile" data-shot="code"></span>
+          <span class="tile" data-shot="receipt"></span>
+          <span class="tile" data-shot="map"></span>
+          <span class="tile" data-shot="photo"></span>
+        </div>
+        <div class="day" id="day-b">Yesterday</div>
+        <div class="tiles" id="row-b">
+          <span class="tile" data-shot="doc"></span>
+          <span class="tile" data-shot="terminal"></span>
+          <span class="tile" data-shot="chart"></span>
+          <span class="tile" data-shot="browser"></span>
+          <span class="tile" data-shot="photo"></span>
+          <span class="tile" data-shot="code"></span>
+          <span class="tile" data-shot="map"></span>
+          <span class="tile" data-shot="chat"></span>
+        </div>
+        <div class="day" id="day-c">Friday, Jul 24</div>
+        <div class="tiles" id="row-c">
+          <span class="tile" data-shot="receipt"></span>
+          <span class="tile" data-shot="chart"></span>
+          <span class="tile" data-shot="doc"></span>
+          <span class="tile" data-shot="browser"></span>
+          <span class="tile" data-shot="terminal"></span>
+          <span class="tile" data-shot="chart"></span>
+          <span class="tile" data-shot="photo"></span>
+          <span class="tile" data-shot="receipt"></span>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <div class="carousel">
+      <button type="button" class="car-arrow" data-dir="-1" aria-label="Previous">
+        <svg viewBox="0 0 10 16" width="9" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 1.5 1.8 8l5.7 6.5"/></svg>
+      </button>
+      <div class="tabs" role="tablist" aria-label="Gallery states">
+        <button role="tab" aria-selected="true" data-q="">Browsing</button>
+        <button role="tab" aria-selected="false" data-q="invoice" data-qkey="panel.query.text" data-hits="receipt,doc">Text · invoice</button>
+        <button role="tab" aria-selected="false" data-q="a blue bar chart" data-qkey="panel.query.image" data-hits="chart">Image · a blue bar chart</button>
+      </div>
+      <button type="button" class="car-arrow" data-dir="1" aria-label="Next">
+        <svg viewBox="0 0 10 16" width="9" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 1.5 8.2 8l-5.7 6.5"/></svg>
+      </button>
+      <span class="car-progress" aria-hidden="true"><i></i></span>
+    </div>
+
+    <p class="footnote">* Requires turning on AI image search (free) and a one-time model download (about 300 MB). Image search keywords are English only.</p>
+
+  </section>
+
+  <section id="storage" class="stage stage-tight">
+    <p class="eyebrow">Did you know?</p>
+    <h2>Screenshots quietly eat a lot of disk.</h2>
+    <p class="stage-lede">
+      Sukurini re-encodes them as lossless WebP — the same pixels, the same colour
+      profile, about a third of the bytes.
+    </p>
+
+    <div class="scene-wrap">
+      <div class="scene scene-wide" data-scene="storage" role="img"
+           aria-label="A screen recording: a Finder window listing hundreds of PNG screenshots, each row converting to WebP with its size shrinking, while Sukurini's setup window counts up the reclaimed space.">
+
+        <div class="scene-bar">
+          <span class="scene-app">Finder</span>
+          <span class="scene-menu">File</span>
+          <span class="scene-menu">Edit</span>
+          <span class="scene-menu">View</span>
+          <span class="scene-gap"></span>
+          <span class="sk-icon"><span class="sk-ripple"></span><span class="sk-ripple"></span><span class="sk-ring"></span><span class="sk-dot"></span></span>
+          <svg class="scene-glyph" viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+            <path d="M1.2 4.1a10 10 0 0 1 13.6 0"/><path d="M3.7 6.9a6.3 6.3 0 0 1 8.6 0"/><path d="M6.3 9.6a2.5 2.5 0 0 1 3.4 0"/>
+          </svg>
+          <svg class="scene-glyph" viewBox="0 0 26 12" width="23" height="11" fill="none" stroke="currentColor">
+            <rect x="0.7" y="0.7" width="21" height="10.6" rx="3.2" stroke-width="1.2" opacity="0.5"/>
+            <rect x="2.6" y="2.6" width="13.5" height="6.8" rx="1.8" fill="currentColor" stroke="none"/>
+            <path d="M23.6 4.3v3.4" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+          </svg>
+          <span class="scene-clock">Sun 2:14</span>
+        </div>
+
+        <div class="scene-desk">
+
+          <div class="finder">
+            <div class="finder-toolbar">
+              <i class="tl tl-r"></i><i class="tl tl-y"></i><i class="tl tl-g"></i>
+              <span class="finder-nav">
+                <svg viewBox="0 0 10 16" width="8" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 1.5 1.8 8l5.7 6.5"/></svg>
+                <svg viewBox="0 0 10 16" width="8" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><path d="M2.5 1.5 8.2 8l-5.7 6.5"/></svg>
+              </span>
+              <span class="finder-title">
+                <svg viewBox="0 0 18 15" width="15" height="13" fill="currentColor"><path d="M1.6 2.2A1.6 1.6 0 0 1 3.2.6h3.4l1.6 1.8h6.6a1.6 1.6 0 0 1 1.6 1.6v8.4a1.6 1.6 0 0 1-1.6 1.6H3.2a1.6 1.6 0 0 1-1.6-1.6Z"/></svg>
+                Screenshots
+              </span>
+              <span class="finder-tools">
+                <span class="finder-seg"><b class="on"></b><b></b><b></b><b></b></span>
+                <span class="finder-search">
+                  <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="6" cy="6" r="4.2"/><path d="M9.1 9.1 12.6 12.6"/></svg>
+                </span>
+              </span>
+            </div>
+            <div class="finder-cols">
+              <span class="fcell fname">Name</span>
+              
+              <span class="fcell fsize">Size</span>
+              <span class="fcell fkind">Kind</span>
+            </div>
+            <div class="finder-scroll">
+              <div class="finder-rows">
+<div class="frow" data-before="5.2 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 22.37.05<i>.png</i></span></span><span class="fcell fsize">5.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.7 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 22.35.33<i>.png</i></span></span><span class="fcell fsize">3.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.7 MB" data-after="435 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 22.28.28<i>.png</i></span></span><span class="fcell fsize">1.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.1 MB" data-after="598 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 22.26.01<i>.png</i></span></span><span class="fcell fsize">2.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.6 MB" data-after="488 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 22.23.26<i>.png</i></span></span><span class="fcell fsize">1.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 22.21.22<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.4 MB" data-after="464 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 22.07.37<i>.png</i></span></span><span class="fcell fsize">1.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.0 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 22.00.47<i>.png</i></span></span><span class="fcell fsize">4.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.6 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 21.53.36<i>.png</i></span></span><span class="fcell fsize">3.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.0 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 21.47.05<i>.png</i></span></span><span class="fcell fsize">4.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="554 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 21.38.50<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.0 MB" data-after="991 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 21.29.51<i>.png</i></span></span><span class="fcell fsize">4.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 21.25.33<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.6 MB" data-after="858 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 21.20.27<i>.png</i></span></span><span class="fcell fsize">3.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.6 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 21.18.17<i>.png</i></span></span><span class="fcell fsize">3.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.6 MB" data-after="701 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 21.07.18<i>.png</i></span></span><span class="fcell fsize">2.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.5 MB" data-after="796 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 20.57.35<i>.png</i></span></span><span class="fcell fsize">2.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="545 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 20.52.50<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.2 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 20.49.15<i>.png</i></span></span><span class="fcell fsize">4.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.5 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 20.42.37<i>.png</i></span></span><span class="fcell fsize">3.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.2 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 20.39.02<i>.png</i></span></span><span class="fcell fsize">5.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.8 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 20.37.10<i>.png</i></span></span><span class="fcell fsize">3.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.1 MB" data-after="487 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 20.23.14<i>.png</i></span></span><span class="fcell fsize">2.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.3 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 20.09.28<i>.png</i></span></span><span class="fcell fsize">4.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.6 MB" data-after="361 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 19.56.50<i>.png</i></span></span><span class="fcell fsize">1.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="749 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 19.48.16<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.5 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 19.39.29<i>.png</i></span></span><span class="fcell fsize">3.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.1 MB" data-after="501 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 19.33.33<i>.png</i></span></span><span class="fcell fsize">2.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="559 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 19.21.52<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="627 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 19.16.57<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.1 MB" data-after="820 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 19.14.57<i>.png</i></span></span><span class="fcell fsize">3.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 19.06.44<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="911 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 18.52.53<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.3 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 18.40.27<i>.png</i></span></span><span class="fcell fsize">4.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.5 MB" data-after="813 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 18.32.39<i>.png</i></span></span><span class="fcell fsize">2.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.4 MB" data-after="369 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 18.22.01<i>.png</i></span></span><span class="fcell fsize">1.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.8 MB" data-after="614 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 18.10.46<i>.png</i></span></span><span class="fcell fsize">1.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="768 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 18.02.05<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.6 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 17.55.15<i>.png</i></span></span><span class="fcell fsize">3.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.2 MB" data-after="1.6 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 17.45.45<i>.png</i></span></span><span class="fcell fsize">5.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.2 MB" data-after="330 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 17.39.50<i>.png</i></span></span><span class="fcell fsize">1.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.3 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 17.35.50<i>.png</i></span></span><span class="fcell fsize">4.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="406 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 17.23.47<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.2 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 17.15.17<i>.png</i></span></span><span class="fcell fsize">5.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.7 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 17.06.46<i>.png</i></span></span><span class="fcell fsize">3.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="566 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 16.56.16<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="501 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 16.53.56<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.8 MB" data-after="633 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 16.44.29<i>.png</i></span></span><span class="fcell fsize">2.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="905 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 16.33.26<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 16.26.59<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="432 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 16.19.56<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="941 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 16.07.16<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.4 MB" data-after="559 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 15.57.13<i>.png</i></span></span><span class="fcell fsize">2.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 15.51.23<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.8 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 15.48.17<i>.png</i></span></span><span class="fcell fsize">3.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.4 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 15.37.02<i>.png</i></span></span><span class="fcell fsize">4.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.5 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 15.31.48<i>.png</i></span></span><span class="fcell fsize">4.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.9 MB" data-after="891 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 15.20.51<i>.png</i></span></span><span class="fcell fsize">3.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.4 MB" data-after="636 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 15.17.09<i>.png</i></span></span><span class="fcell fsize">2.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.7 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 15.06.47<i>.png</i></span></span><span class="fcell fsize">4.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="884 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 14.56.18<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.8 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 14.53.38<i>.png</i></span></span><span class="fcell fsize">3.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.4 MB" data-after="329 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 14.49.47<i>.png</i></span></span><span class="fcell fsize">1.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 14.45.43<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.1 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 14.41.57<i>.png</i></span></span><span class="fcell fsize">5.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.4 MB" data-after="788 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 14.28.03<i>.png</i></span></span><span class="fcell fsize">2.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.7 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 14.26.20<i>.png</i></span></span><span class="fcell fsize">3.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.8 MB" data-after="417 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 14.24.54<i>.png</i></span></span><span class="fcell fsize">1.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.1 MB" data-after="574 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 14.19.20<i>.png</i></span></span><span class="fcell fsize">2.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.8 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 14.05.54<i>.png</i></span></span><span class="fcell fsize">3.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.0 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 13.57.14<i>.png</i></span></span><span class="fcell fsize">4.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.6 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 13.44.29<i>.png</i></span></span><span class="fcell fsize">3.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.8 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 13.32.08<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.8 MB" data-after="896 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 13.25.53<i>.png</i></span></span><span class="fcell fsize">2.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="876 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 13.23.13<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.9 MB" data-after="964 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 13.09.20<i>.png</i></span></span><span class="fcell fsize">3.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.0 MB" data-after="685 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 13.01.47<i>.png</i></span></span><span class="fcell fsize">3.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="780 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 12.53.59<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.7 MB" data-after="939 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 12.45.02<i>.png</i></span></span><span class="fcell fsize">2.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.4 MB" data-after="796 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 12.33.25<i>.png</i></span></span><span class="fcell fsize">2.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.6 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 12.26.34<i>.png</i></span></span><span class="fcell fsize">3.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.9 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 12.15.11<i>.png</i></span></span><span class="fcell fsize">3.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.6 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 12.06.27<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.1 MB" data-after="703 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 12.03.40<i>.png</i></span></span><span class="fcell fsize">3.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="717 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 11.55.26<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.7 MB" data-after="911 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 11.47.42<i>.png</i></span></span><span class="fcell fsize">2.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 11.34.46<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.8 MB" data-after="624 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 11.30.48<i>.png</i></span></span><span class="fcell fsize">1.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 11.19.48<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.1 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 11.16.43<i>.png</i></span></span><span class="fcell fsize">5.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 11.12.07<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="369 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 11.01.13<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.9 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 10.51.50<i>.png</i></span></span><span class="fcell fsize">3.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="606 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 10.45.31<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.1 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 10.35.21<i>.png</i></span></span><span class="fcell fsize">5.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="417 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 10.22.36<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 10.08.44<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.2 MB" data-after="1.6 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 09.54.07<i>.png</i></span></span><span class="fcell fsize">5.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.1 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 09.41.07<i>.png</i></span></span><span class="fcell fsize">5.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.5 MB" data-after="361 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 09.30.50<i>.png</i></span></span><span class="fcell fsize">1.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.2 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 09.28.40<i>.png</i></span></span><span class="fcell fsize">4.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="866 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 09.26.36<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.4 MB" data-after="1.6 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 09.18.56<i>.png</i></span></span><span class="fcell fsize">5.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.1 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 09.13.43<i>.png</i></span></span><span class="fcell fsize">5.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.0 MB" data-after="956 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 09.10.53<i>.png</i></span></span><span class="fcell fsize">4.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 09.05.57<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="777 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 09.01.38<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.8 MB" data-after="652 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 08.47.48<i>.png</i></span></span><span class="fcell fsize">2.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.0 MB" data-after="686 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 08.36.01<i>.png</i></span></span><span class="fcell fsize">3.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.8 MB" data-after="411 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 08.32.41<i>.png</i></span></span><span class="fcell fsize">1.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.2 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 08.21.26<i>.png</i></span></span><span class="fcell fsize">5.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 08.19.20<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.0 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 08.13.53<i>.png</i></span></span><span class="fcell fsize">4.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.1 MB" data-after="672 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 08.09.50<i>.png</i></span></span><span class="fcell fsize">2.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.8 MB" data-after="437 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 08.06.37<i>.png</i></span></span><span class="fcell fsize">1.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.6 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 07.54.27<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 07.40.33<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.5 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 07.28.59<i>.png</i></span></span><span class="fcell fsize">3.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.1 MB" data-after="482 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 07.14.42<i>.png</i></span></span><span class="fcell fsize">2.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.6 MB" data-after="480 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-26 at 07.03.51<i>.png</i></span></span><span class="fcell fsize">1.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.7 MB" data-after="500 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 22.49.22<i>.png</i></span></span><span class="fcell fsize">1.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.1 MB" data-after="591 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 22.46.21<i>.png</i></span></span><span class="fcell fsize">2.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 22.32.09<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.8 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 22.25.13<i>.png</i></span></span><span class="fcell fsize">3.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.5 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 22.21.21<i>.png</i></span></span><span class="fcell fsize">3.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.6 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 22.19.06<i>.png</i></span></span><span class="fcell fsize">3.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.7 MB" data-after="579 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 22.05.04<i>.png</i></span></span><span class="fcell fsize">1.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.8 MB" data-after="634 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 21.55.02<i>.png</i></span></span><span class="fcell fsize">2.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 21.46.56<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.7 MB" data-after="668 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 21.40.45<i>.png</i></span></span><span class="fcell fsize">2.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.0 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 21.26.51<i>.png</i></span></span><span class="fcell fsize">4.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.6 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 21.18.06<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="933 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 21.10.41<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="374 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 20.57.41<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="430 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 20.54.49<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.1 MB" data-after="980 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 20.47.46<i>.png</i></span></span><span class="fcell fsize">4.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.4 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 20.35.21<i>.png</i></span></span><span class="fcell fsize">4.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.9 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 20.27.09<i>.png</i></span></span><span class="fcell fsize">3.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.5 MB" data-after="712 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 20.19.33<i>.png</i></span></span><span class="fcell fsize">2.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.2 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 20.09.39<i>.png</i></span></span><span class="fcell fsize">5.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.8 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 19.58.25<i>.png</i></span></span><span class="fcell fsize">3.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.3 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 19.46.25<i>.png</i></span></span><span class="fcell fsize">4.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.6 MB" data-after="641 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 19.33.00<i>.png</i></span></span><span class="fcell fsize">2.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.5 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 19.26.56<i>.png</i></span></span><span class="fcell fsize">4.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 19.17.03<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="934 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 19.03.05<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="443 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 18.57.39<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 18.52.57<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.7 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 18.47.33<i>.png</i></span></span><span class="fcell fsize">3.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="784 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 18.34.12<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.1 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 18.29.09<i>.png</i></span></span><span class="fcell fsize">4.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.3 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 18.20.46<i>.png</i></span></span><span class="fcell fsize">4.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.6 MB" data-after="767 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 18.12.37<i>.png</i></span></span><span class="fcell fsize">2.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 18.04.24<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.7 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 17.57.04<i>.png</i></span></span><span class="fcell fsize">3.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.7 MB" data-after="430 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 17.55.55<i>.png</i></span></span><span class="fcell fsize">1.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.4 MB" data-after="576 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 17.47.10<i>.png</i></span></span><span class="fcell fsize">2.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 17.44.18<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 17.33.58<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.4 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 17.20.36<i>.png</i></span></span><span class="fcell fsize">5.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="857 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 17.06.38<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.4 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 17.00.41<i>.png</i></span></span><span class="fcell fsize">5.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="573 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 16.46.02<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.5 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 16.37.02<i>.png</i></span></span><span class="fcell fsize">3.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 16.33.58<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 16.19.14<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.9 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 16.09.12<i>.png</i></span></span><span class="fcell fsize">4.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.4 MB" data-after="453 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 15.56.36<i>.png</i></span></span><span class="fcell fsize">1.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.7 MB" data-after="576 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 15.51.37<i>.png</i></span></span><span class="fcell fsize">1.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.2 MB" data-after="313 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 15.37.31<i>.png</i></span></span><span class="fcell fsize">1.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 15.27.27<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.5 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 15.19.13<i>.png</i></span></span><span class="fcell fsize">4.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 15.11.07<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 14.58.53<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.1 MB" data-after="478 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 14.53.43<i>.png</i></span></span><span class="fcell fsize">2.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="928 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 14.47.11<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.0 MB" data-after="677 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 14.39.02<i>.png</i></span></span><span class="fcell fsize">2.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.5 MB" data-after="872 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 14.25.46<i>.png</i></span></span><span class="fcell fsize">3.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.2 MB" data-after="329 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 14.23.47<i>.png</i></span></span><span class="fcell fsize">1.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="361 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 14.12.20<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="978 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 14.01.05<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="747 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 13.56.08<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.6 MB" data-after="397 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 13.54.05<i>.png</i></span></span><span class="fcell fsize">1.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.2 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 13.49.44<i>.png</i></span></span><span class="fcell fsize">5.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="979 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 13.40.32<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 13.27.02<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.0 MB" data-after="904 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 13.17.32<i>.png</i></span></span><span class="fcell fsize">4.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 13.06.36<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="665 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 12.58.42<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.6 MB" data-after="881 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 12.56.33<i>.png</i></span></span><span class="fcell fsize">2.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.6 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 12.46.32<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="766 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 12.42.50<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.7 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 12.36.20<i>.png</i></span></span><span class="fcell fsize">4.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.6 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 12.24.19<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.5 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 12.18.15<i>.png</i></span></span><span class="fcell fsize">4.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 12.06.55<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="847 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 11.59.44<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 11.51.05<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="467 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 11.41.44<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.5 MB" data-after="975 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 11.38.42<i>.png</i></span></span><span class="fcell fsize">3.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="755 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 11.36.52<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 11.33.14<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.6 MB" data-after="904 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 11.31.34<i>.png</i></span></span><span class="fcell fsize">2.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.8 MB" data-after="878 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 11.18.59<i>.png</i></span></span><span class="fcell fsize">2.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="562 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 11.08.21<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 11.04.10<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.3 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 10.57.30<i>.png</i></span></span><span class="fcell fsize">4.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.5 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 10.53.02<i>.png</i></span></span><span class="fcell fsize">4.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.9 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 10.48.36<i>.png</i></span></span><span class="fcell fsize">4.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 10.43.59<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.6 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 10.41.46<i>.png</i></span></span><span class="fcell fsize">3.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.0 MB" data-after="645 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 10.32.48<i>.png</i></span></span><span class="fcell fsize">2.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 10.22.34<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.5 MB" data-after="426 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 10.13.41<i>.png</i></span></span><span class="fcell fsize">1.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.2 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 09.59.21<i>.png</i></span></span><span class="fcell fsize">5.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.4 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 09.56.10<i>.png</i></span></span><span class="fcell fsize">4.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.5 MB" data-after="816 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 09.44.12<i>.png</i></span></span><span class="fcell fsize">2.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.7 MB" data-after="826 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 09.42.18<i>.png</i></span></span><span class="fcell fsize">2.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="525 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 09.31.38<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.2 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 09.29.23<i>.png</i></span></span><span class="fcell fsize">5.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.1 MB" data-after="629 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 09.26.12<i>.png</i></span></span><span class="fcell fsize">2.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="913 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 09.18.20<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.1 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 09.07.21<i>.png</i></span></span><span class="fcell fsize">4.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.6 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 09.03.09<i>.png</i></span></span><span class="fcell fsize">3.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.5 MB" data-after="644 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 08.50.20<i>.png</i></span></span><span class="fcell fsize">2.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 08.37.11<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.2 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 08.26.36<i>.png</i></span></span><span class="fcell fsize">4.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="991 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 08.20.11<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.8 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 08.08.50<i>.png</i></span></span><span class="fcell fsize">3.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.7 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 08.00.55<i>.png</i></span></span><span class="fcell fsize">3.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.8 MB" data-after="807 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 07.56.37<i>.png</i></span></span><span class="fcell fsize">2.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 07.43.51<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.2 MB" data-after="400 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 07.40.11<i>.png</i></span></span><span class="fcell fsize">1.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.9 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 07.38.30<i>.png</i></span></span><span class="fcell fsize">4.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.6 MB" data-after="695 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 07.25.42<i>.png</i></span></span><span class="fcell fsize">2.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.4 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 07.14.49<i>.png</i></span></span><span class="fcell fsize">4.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="611 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-25 at 07.06.13<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="868 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 22.53.20<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="520 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 22.45.47<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.8 MB" data-after="482 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 22.37.01<i>.png</i></span></span><span class="fcell fsize">1.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.2 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 22.29.04<i>.png</i></span></span><span class="fcell fsize">4.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.4 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 22.16.51<i>.png</i></span></span><span class="fcell fsize">5.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.2 MB" data-after="947 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 22.12.17<i>.png</i></span></span><span class="fcell fsize">4.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="500 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 22.09.40<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.7 MB" data-after="994 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 21.58.47<i>.png</i></span></span><span class="fcell fsize">3.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="567 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 21.47.07<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="722 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 21.38.31<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.3 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 21.29.42<i>.png</i></span></span><span class="fcell fsize">4.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.7 MB" data-after="935 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 21.20.05<i>.png</i></span></span><span class="fcell fsize">2.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="980 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 21.15.43<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.7 MB" data-after="878 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 21.12.48<i>.png</i></span></span><span class="fcell fsize">2.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.2 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 20.59.43<i>.png</i></span></span><span class="fcell fsize">4.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.0 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 20.46.32<i>.png</i></span></span><span class="fcell fsize">4.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.1 MB" data-after="1.6 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 20.43.13<i>.png</i></span></span><span class="fcell fsize">5.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.7 MB" data-after="759 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 20.32.34<i>.png</i></span></span><span class="fcell fsize">2.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 20.25.08<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.1 MB" data-after="661 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 20.11.53<i>.png</i></span></span><span class="fcell fsize">2.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.2 MB" data-after="329 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 20.00.00<i>.png</i></span></span><span class="fcell fsize">1.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.2 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 19.51.14<i>.png</i></span></span><span class="fcell fsize">5.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="304 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 19.47.53<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.5 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 19.37.34<i>.png</i></span></span><span class="fcell fsize">4.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.7 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 19.25.52<i>.png</i></span></span><span class="fcell fsize">4.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.7 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 19.17.43<i>.png</i></span></span><span class="fcell fsize">4.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.7 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 19.08.37<i>.png</i></span></span><span class="fcell fsize">4.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.9 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 19.06.07<i>.png</i></span></span><span class="fcell fsize">3.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="837 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 18.58.09<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.0 MB" data-after="467 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 18.53.32<i>.png</i></span></span><span class="fcell fsize">2.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="802 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 18.47.51<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.6 MB" data-after="530 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 18.45.16<i>.png</i></span></span><span class="fcell fsize">1.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.9 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 18.36.38<i>.png</i></span></span><span class="fcell fsize">3.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.1 MB" data-after="571 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 18.24.02<i>.png</i></span></span><span class="fcell fsize">2.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.0 MB" data-after="651 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 18.12.25<i>.png</i></span></span><span class="fcell fsize">2.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 18.03.39<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="958 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 17.55.34<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.1 MB" data-after="776 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 17.45.50<i>.png</i></span></span><span class="fcell fsize">3.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.8 MB" data-after="476 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 17.33.05<i>.png</i></span></span><span class="fcell fsize">1.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="332 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 17.31.02<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="849 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 17.22.01<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.1 MB" data-after="820 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 17.09.14<i>.png</i></span></span><span class="fcell fsize">3.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.5 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 16.59.46<i>.png</i></span></span><span class="fcell fsize">4.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 16.56.42<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.6 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 16.45.54<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="896 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 16.39.29<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.4 MB" data-after="488 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 16.37.06<i>.png</i></span></span><span class="fcell fsize">1.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.8 MB" data-after="549 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 16.23.19<i>.png</i></span></span><span class="fcell fsize">1.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="518 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 16.16.20<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="431 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 16.07.56<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.7 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 15.59.36<i>.png</i></span></span><span class="fcell fsize">3.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.8 MB" data-after="488 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 15.54.11<i>.png</i></span></span><span class="fcell fsize">1.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.5 MB" data-after="356 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 15.40.04<i>.png</i></span></span><span class="fcell fsize">1.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="637 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 15.34.17<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.8 MB" data-after="868 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 15.22.20<i>.png</i></span></span><span class="fcell fsize">3.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="744 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 15.12.01<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.4 MB" data-after="800 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 15.07.03<i>.png</i></span></span><span class="fcell fsize">2.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.9 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 14.57.10<i>.png</i></span></span><span class="fcell fsize">4.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 14.55.50<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.7 MB" data-after="526 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 14.46.10<i>.png</i></span></span><span class="fcell fsize">1.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.0 MB" data-after="521 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 14.44.44<i>.png</i></span></span><span class="fcell fsize">2.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 14.36.40<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="943 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 14.25.24<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 14.16.35<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.5 MB" data-after="346 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 14.08.56<i>.png</i></span></span><span class="fcell fsize">1.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.7 MB" data-after="732 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 14.05.00<i>.png</i></span></span><span class="fcell fsize">2.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.5 MB" data-after="851 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 13.52.48<i>.png</i></span></span><span class="fcell fsize">2.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.1 MB" data-after="977 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 13.43.20<i>.png</i></span></span><span class="fcell fsize">3.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="883 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 13.37.41<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="446 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 13.27.27<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="497 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 13.23.55<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="568 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 13.19.22<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 13.08.40<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="904 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 13.00.34<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 12.53.11<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.8 MB" data-after="557 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 12.51.02<i>.png</i></span></span><span class="fcell fsize">1.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 12.45.10<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.1 MB" data-after="708 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 12.36.25<i>.png</i></span></span><span class="fcell fsize">3.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.0 MB" data-after="569 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 12.24.10<i>.png</i></span></span><span class="fcell fsize">2.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.6 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 12.19.06<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="401 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 12.10.37<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 11.56.49<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 11.50.03<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="991 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 11.44.05<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.9 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 11.31.08<i>.png</i></span></span><span class="fcell fsize">4.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.9 MB" data-after="987 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 11.28.37<i>.png</i></span></span><span class="fcell fsize">3.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="976 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 11.24.22<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 11.13.23<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="490 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 11.11.08<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.9 MB" data-after="885 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 11.05.15<i>.png</i></span></span><span class="fcell fsize">3.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 11.02.21<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.3 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 10.53.41<i>.png</i></span></span><span class="fcell fsize">4.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.8 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 10.46.20<i>.png</i></span></span><span class="fcell fsize">3.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.7 MB" data-after="855 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 10.39.08<i>.png</i></span></span><span class="fcell fsize">2.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.1 MB" data-after="670 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 10.29.22<i>.png</i></span></span><span class="fcell fsize">2.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.0 MB" data-after="758 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 10.26.06<i>.png</i></span></span><span class="fcell fsize">3.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.1 MB" data-after="919 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 10.22.14<i>.png</i></span></span><span class="fcell fsize">3.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 10.12.22<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.7 MB" data-after="523 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 10.09.44<i>.png</i></span></span><span class="fcell fsize">1.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.5 MB" data-after="833 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 10.05.05<i>.png</i></span></span><span class="fcell fsize">2.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.5 MB" data-after="573 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 09.52.23<i>.png</i></span></span><span class="fcell fsize">2.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.9 MB" data-after="885 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 09.44.44<i>.png</i></span></span><span class="fcell fsize">3.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.9 MB" data-after="874 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 09.40.34<i>.png</i></span></span><span class="fcell fsize">3.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.0 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 09.36.43<i>.png</i></span></span><span class="fcell fsize">4.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="489 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 09.25.48<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.5 MB" data-after="424 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 09.23.10<i>.png</i></span></span><span class="fcell fsize">1.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.3 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 09.14.15<i>.png</i></span></span><span class="fcell fsize">4.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 09.06.05<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.5 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 08.55.06<i>.png</i></span></span><span class="fcell fsize">4.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.2 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 08.53.37<i>.png</i></span></span><span class="fcell fsize">4.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 08.42.38<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.1 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 08.33.56<i>.png</i></span></span><span class="fcell fsize">4.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 08.27.20<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="416 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 08.22.46<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.6 MB" data-after="452 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 08.12.01<i>.png</i></span></span><span class="fcell fsize">1.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.6 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 08.08.38<i>.png</i></span></span><span class="fcell fsize">3.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.8 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 07.59.09<i>.png</i></span></span><span class="fcell fsize">3.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.5 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 07.47.29<i>.png</i></span></span><span class="fcell fsize">4.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.5 MB" data-after="497 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 07.34.00<i>.png</i></span></span><span class="fcell fsize">1.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.0 MB" data-after="624 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 07.32.32<i>.png</i></span></span><span class="fcell fsize">2.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.4 MB" data-after="334 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 07.30.21<i>.png</i></span></span><span class="fcell fsize">1.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.8 MB" data-after="574 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 07.17.57<i>.png</i></span></span><span class="fcell fsize">1.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.5 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 07.13.41<i>.png</i></span></span><span class="fcell fsize">4.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.5 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-24 at 07.01.55<i>.png</i></span></span><span class="fcell fsize">4.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="520 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 22.55.10<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.3 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 22.41.31<i>.png</i></span></span><span class="fcell fsize">4.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="728 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 22.31.59<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.6 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 22.26.31<i>.png</i></span></span><span class="fcell fsize">3.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="959 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 22.17.18<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="882 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 22.13.41<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="914 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 22.06.37<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 22.00.45<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.8 MB" data-after="743 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 21.47.25<i>.png</i></span></span><span class="fcell fsize">2.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 21.39.16<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="978 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 21.37.06<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.1 MB" data-after="945 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 21.35.38<i>.png</i></span></span><span class="fcell fsize">4.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.6 MB" data-after="465 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 21.22.23<i>.png</i></span></span><span class="fcell fsize">1.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.1 MB" data-after="921 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 21.18.44<i>.png</i></span></span><span class="fcell fsize">3.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="743 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 21.12.33<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.9 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 21.02.12<i>.png</i></span></span><span class="fcell fsize">4.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="509 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 20.59.04<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.2 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 20.57.28<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.3 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 20.55.20<i>.png</i></span></span><span class="fcell fsize">5.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="842 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 20.53.36<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.5 MB" data-after="434 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 20.47.07<i>.png</i></span></span><span class="fcell fsize">1.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.4 MB" data-after="434 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 20.33.32<i>.png</i></span></span><span class="fcell fsize">1.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="513 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 20.23.56<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.7 MB" data-after="703 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 20.12.30<i>.png</i></span></span><span class="fcell fsize">2.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 20.01.30<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 19.49.06<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.9 MB" data-after="564 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 19.43.46<i>.png</i></span></span><span class="fcell fsize">1.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="944 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 19.29.54<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.0 MB" data-after="1.7 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 19.27.11<i>.png</i></span></span><span class="fcell fsize">5.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.2 MB" data-after="1.0 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 19.23.43<i>.png</i></span></span><span class="fcell fsize">4.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="764 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 19.19.31<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.5 MB" data-after="777 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 19.06.27<i>.png</i></span></span><span class="fcell fsize">2.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="571 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 18.54.51<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.5 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 18.41.22<i>.png</i></span></span><span class="fcell fsize">3.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.8 MB" data-after="968 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 18.35.55<i>.png</i></span></span><span class="fcell fsize">2.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.2 MB" data-after="597 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 18.22.57<i>.png</i></span></span><span class="fcell fsize">2.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="359 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 18.14.28<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.9 MB" data-after="894 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 18.07.59<i>.png</i></span></span><span class="fcell fsize">2.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="747 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 17.57.31<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.7 MB" data-after="791 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 17.44.27<i>.png</i></span></span><span class="fcell fsize">2.7 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 17.35.26<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.1 MB" data-after="928 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 17.24.29<i>.png</i></span></span><span class="fcell fsize">3.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.1 MB" data-after="868 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 17.14.18<i>.png</i></span></span><span class="fcell fsize">3.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.2 MB" data-after="895 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 17.11.40<i>.png</i></span></span><span class="fcell fsize">3.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.8 MB" data-after="569 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 17.08.09<i>.png</i></span></span><span class="fcell fsize">1.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.9 MB" data-after="1.1 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 17.00.59<i>.png</i></span></span><span class="fcell fsize">4.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.9 MB" data-after="1.3 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 16.51.51<i>.png</i></span></span><span class="fcell fsize">3.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.5 MB" data-after="346 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 16.47.40<i>.png</i></span></span><span class="fcell fsize">1.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="651 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 16.40.08<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="905 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 16.36.37<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.1 MB" data-after="977 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 16.34.51<i>.png</i></span></span><span class="fcell fsize">4.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.2 MB" data-after="332 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 16.31.53<i>.png</i></span></span><span class="fcell fsize">1.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.9 MB" data-after="1.6 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 16.25.55<i>.png</i></span></span><span class="fcell fsize">4.9 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.1 MB" data-after="863 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 16.19.30<i>.png</i></span></span><span class="fcell fsize">3.1 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.0 MB" data-after="507 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 16.09.24<i>.png</i></span></span><span class="fcell fsize">2.0 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.5 MB" data-after="860 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 16.00.06<i>.png</i></span></span><span class="fcell fsize">3.5 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.4 MB" data-after="373 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 15.57.21<i>.png</i></span></span><span class="fcell fsize">1.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.3 MB" data-after="578 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 15.53.46<i>.png</i></span></span><span class="fcell fsize">2.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.4 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 15.48.27<i>.png</i></span></span><span class="fcell fsize">4.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.4 MB" data-after="987 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 15.41.18<i>.png</i></span></span><span class="fcell fsize">3.4 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.3 MB" data-after="389 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 15.27.46<i>.png</i></span></span><span class="fcell fsize">1.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.8 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 15.19.03<i>.png</i></span></span><span class="fcell fsize">4.8 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="4.6 MB" data-after="1.5 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 15.14.20<i>.png</i></span></span><span class="fcell fsize">4.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="2.6 MB" data-after="816 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 15.00.01<i>.png</i></span></span><span class="fcell fsize">2.6 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="3.3 MB" data-after="868 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 14.52.19<i>.png</i></span></span><span class="fcell fsize">3.3 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="1.2 MB" data-after="416 KB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 14.50.42<i>.png</i></span></span><span class="fcell fsize">1.2 MB</span><span class="fcell fkind">PNG image</span></div>
+<div class="frow" data-before="5.4 MB" data-after="1.4 MB"><span class="fcell fname"><em class="ficon"></em><span>Screenshot 2026-07-23 at 14.46.57<i>.png</i></span></span><span class="fcell fsize">5.4 MB</span><span class="fcell fkind">PNG image</span></div>
+              </div>
+            </div>
+            <div class="finder-status"><span class="finder-count">428 items</span><span class="finder-total">1.24 GB</span></div>
+          </div>
+
+          <div class="ob">
+            <div class="ob-tint"></div>
+            <span class="ob-lights"><i class="tl tl-r"></i><i class="tl tl-y"></i><i class="tl tl-g"></i></span>
+            <div class="ob-body">
+              <span class="ob-badge">
+                <svg viewBox="0 0 26 26" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 8.6A2.6 2.6 0 0 1 6.6 6h12.8A2.6 2.6 0 0 1 22 8.6v8.8a2.6 2.6 0 0 1-2.6 2.6H6.6A2.6 2.6 0 0 1 4 17.4Z"/>
+                  <path d="M4 13h18"/><path d="M8 16.6h.01M11.4 16.6h.01M14.8 16.6h.01"/>
+                </svg>
+              </span>
+              <h3 class="ob-title">Converting to WebP</h3>
+              <p class="ob-sub">Lossless, and usually about two thirds smaller than PNG. Deleted once the copy is verified pixel by pixel.</p>
+
+              <div class="ob-card">
+                <div class="ob-amount"><b>0</b><span>MB</span></div>
+                <p class="ob-caption">reclaimed so far · 0 of 428 checked</p>
+                <div class="ob-track"><i></i></div>
+                <div class="ob-stats">
+                  <div><b class="ob-count">0</b><span>converted</span></div>
+                  <div><b class="ob-pct">0%</b><span>smaller</span></div>
+                </div>
+              </div>
+
+              <div class="ob-foot">
+                <span class="ob-dots"><i></i><i></i><i class="on"></i><i></i></span>
+                <span class="ob-continue"><i class="ob-spinner"></i>Continue</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="caption">Ready</div>
+
+        <div class="replay-layer">
+          <button type="button">
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 10a7 7 0 1 1-2.2-5.1"/><path d="M17.4 2.6v4.2h-4.2"/>
+            </svg>
+            Replay
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="origin">
+    <p>
+      Named after <a href="https://apps.apple.com/app/screenie/id1195678496">Screenie</a>, a lovely
+      little screenshot shelf that stopped being updated years ago — its last build is x86-only, runs
+      under Rosetta, and the developer's site is gone. Sukurini is a from-scratch rebuild of what made
+      it good, for Apple Silicon.
+    </p>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <span>Copyright 2026 Suhun Han · Apache-2.0</span>
+  <span class="footer-links">
+    <a href="https://github.com/ssut/Sukurini">Source</a>
+    <a href="https://github.com/ssut/Sukurini/releases">Releases</a>
+    <a href="https://github.com/ssut/Sukurini/blob/main/LICENSE">License</a>
+    <a href="https://github.com/ssut">@ssut</a>
+  </span>
+</footer>
+
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

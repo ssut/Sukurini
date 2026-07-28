@@ -1,0 +1,77 @@
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  SITE: docs
+  APPCAST_BRANCH: gh-pages
+
+jobs:
+  deploy:
+    name: deploy-pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Verify site
+        run: |
+          set -euo pipefail
+          for required in index.html styles.css app.js icon.svg; do
+            if [ ! -f "${SITE}/${required}" ]; then
+              echo "site status=fail reason=missing path=${SITE}/${required}"
+              exit 1
+            fi
+          done
+          if [ -e "${SITE}/appcast.xml" ]; then
+            echo "site status=fail reason=appcast_in_site_root detail=appcast_belongs_to_${APPCAST_BRANCH}_branch_only"
+            exit 1
+          fi
+          echo "site status=ok files=$(find "$SITE" -type f | wc -l | tr -d ' ') bytes=$(du -sk "$SITE" | cut -f1)"
+
+      - name: Configure Pages
+        id: configure
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ env.SITE }}
+
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@v5
+
+      - name: Summary
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "### Sukurini site"
+            echo ""
+            echo "- url: ${{ steps.deploy.outputs.page_url }}"
+            echo "- source: \`${SITE}/\` on \`${GITHUB_REF_NAME}\`"
+            echo "- commit: \`${GITHUB_SHA}\`"
+            echo "- appcast: untouched on \`${APPCAST_BRANCH}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "pages status=complete url=${{ steps.deploy.outputs.page_url }}"
