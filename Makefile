@@ -2,6 +2,11 @@ APP := Sukurini
 BUNDLE_ID := com.suhunhan.sukurini
 DIST := dist/$(APP).app
 IDENTITY ?= -
+ifeq ($(IDENTITY),-)
+CODESIGN_FLAGS :=
+else
+CODESIGN_FLAGS := --options runtime --timestamp
+endif
 VERSION := $(shell tr -d '[:space:]' < VERSION 2>/dev/null)
 BUILD ?= 0
 ARCH := arm64
@@ -15,8 +20,9 @@ SPARKLE_NAME := Sparkle.framework
 SPARKLE_DEST := $(DIST)/Contents/Frameworks/$(SPARKLE_NAME)
 SPARKLE_VERSION_DIR := $(SPARKLE_DEST)/Versions/B
 SPARKLE_TOOLS := .build/artifacts/sparkle/Sparkle/bin
+DMG := dist/$(APP)-$(VERSION).dmg
 
-.PHONY: build bundle sign run dev logs install fixtures stop clean upload-symbols
+.PHONY: build bundle sign dmg run dev logs install fixtures stop clean upload-symbols
 
 build:
 	$(SWIFT_RELEASE)
@@ -39,14 +45,24 @@ bundle: build
 	echo "arch check ok archs=$$ARCHS"
 
 sign: bundle
-	codesign --force --sign "$(IDENTITY)" --preserve-metadata=entitlements $(SPARKLE_VERSION_DIR)/XPCServices/Downloader.xpc
-	codesign --force --sign "$(IDENTITY)" --preserve-metadata=entitlements $(SPARKLE_VERSION_DIR)/XPCServices/Installer.xpc
-	codesign --force --sign "$(IDENTITY)" --preserve-metadata=entitlements $(SPARKLE_VERSION_DIR)/Updater.app
-	codesign --force --sign "$(IDENTITY)" --preserve-metadata=entitlements $(SPARKLE_VERSION_DIR)/Autoupdate
-	codesign --force --sign "$(IDENTITY)" $(SPARKLE_DEST)
-	codesign --force --sign "$(IDENTITY)" $(DIST)
+	codesign --force --sign "$(IDENTITY)" $(CODESIGN_FLAGS) --preserve-metadata=entitlements $(SPARKLE_VERSION_DIR)/XPCServices/Downloader.xpc
+	codesign --force --sign "$(IDENTITY)" $(CODESIGN_FLAGS) --preserve-metadata=entitlements $(SPARKLE_VERSION_DIR)/XPCServices/Installer.xpc
+	codesign --force --sign "$(IDENTITY)" $(CODESIGN_FLAGS) --preserve-metadata=entitlements $(SPARKLE_VERSION_DIR)/Updater.app
+	codesign --force --sign "$(IDENTITY)" $(CODESIGN_FLAGS) --preserve-metadata=entitlements $(SPARKLE_VERSION_DIR)/Autoupdate
+	codesign --force --sign "$(IDENTITY)" $(CODESIGN_FLAGS) $(SPARKLE_DEST)
+	codesign --force --sign "$(IDENTITY)" $(CODESIGN_FLAGS) $(DIST)
 	codesign --verify --deep --strict $(DIST)
 	codesign -dv $(DIST) 2>&1 | head -5
+
+dmg: sign
+	./Scripts/make-dmg.sh $(DIST) $(DMG) $(APP)
+	@if [ "$(IDENTITY)" != "-" ]; then \
+		codesign --force --sign "$(IDENTITY)" --timestamp $(DMG); \
+		codesign --verify --strict $(DMG); \
+		echo "dmg signed identity=$(IDENTITY)"; \
+	else \
+		echo "dmg unsigned reason=adhoc_identity"; \
+	fi
 
 run: sign
 	-pkill -x $(APP)

@@ -38,6 +38,7 @@ jobs:
       channel: ${{ steps.resolve.outputs.channel }}
       prerelease: ${{ steps.resolve.outputs.prerelease }}
       archive: ${{ steps.resolve.outputs.archive }}
+      dmg: ${{ steps.resolve.outputs.dmg }}
 
     steps:
       - name: Checkout
@@ -101,6 +102,7 @@ jobs:
             echo "channel=$CHANNEL"
             echo "prerelease=$PRERELEASE"
             echo "archive=${APP}-${SHORT}.zip"
+            echo "dmg=${APP}-${SHORT}.dmg"
           } >> "$GITHUB_OUTPUT"
           echo "version resolved source=$SOURCE short=$SHORT tag=$TAG channel=$CHANNEL prerelease=$PRERELEASE proceed=$PROCEED"
 
@@ -168,13 +170,62 @@ jobs:
           plutil -lint Support/GoogleService-Info.plist > /dev/null
           echo "firebase-config status=written bytes=$(wc -c < Support/GoogleService-Info.plist)"
 
-      - name: Build and sign
+      - name: Import signing certificate
+        id: signing
+        env:
+          CERT_B64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          API_KEY_B64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CERT_B64:-}" ] || [ -z "${CERT_PASSWORD:-}" ]; then
+            echo "identity=-" >> "$GITHUB_OUTPUT"
+            echo "notarize=false" >> "$GITHUB_OUTPUT"
+            echo "signing status=adhoc reason=certificate_secrets_absent"
+            exit 0
+          fi
+
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+          printf '%s' "$CERT_B64" | base64 -d > "$CERT_PATH"
+          security import "$CERT_PATH" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          rm -f "$CERT_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | grep 'Developer ID Application' | head -1 | sed -E 's/.*"(.*)"/\1/')"
+          if [ -z "$IDENTITY" ]; then
+            echo "signing status=fail reason=no_developer_id_in_certificate"
+            exit 1
+          fi
+
+          NOTARIZE=false
+          if [ -n "${API_KEY_B64:-}" ] && [ -n "${API_KEY_ID:-}" ] && [ -n "${API_ISSUER_ID:-}" ]; then
+            NOTARIZE=true
+          else
+            echo "signing note=notarization_skipped reason=api_key_secrets_absent"
+          fi
+
+          echo "identity=$IDENTITY" >> "$GITHUB_OUTPUT"
+          echo "notarize=$NOTARIZE" >> "$GITHUB_OUTPUT"
+          echo "keychain=$KEYCHAIN" >> "$GITHUB_OUTPUT"
+          echo "signing status=developer_id identity=$IDENTITY notarize=$NOTARIZE"
+
+      - name: Build, sign and package
         env:
           BUILD: ${{ github.run_number }}
         run: |
           set -euo pipefail
-          make sign
-          echo "bundle status=signed identity=adhoc build=$BUILD"
+          make dmg IDENTITY="${{ steps.signing.outputs.identity }}"
+          FLAGS="$(codesign -d --verbose=2 "dist/${APP}.app" 2>&1 | grep -oE 'flags=0x[0-9a-f]+\([^)]*\)' || true)"
+          echo "bundle status=signed build=$BUILD $FLAGS"
 
       - name: Verify app bundle
         run: |
@@ -199,12 +250,61 @@ jobs:
           fi
           echo "verify status=ok short=$SHORT build=$BUILD_NUM archs=$(lipo -archs "$APP_PATH/Contents/MacOS/${APP}")"
 
-      - name: Package archive
+      - name: Package archives
         run: |
           set -euo pipefail
           ARCHIVE="${{ needs.check.outputs.archive }}"
           ditto -c -k --sequesterRsrc --keepParent "dist/${APP}.app" "$ARCHIVE"
-          echo "package status=ok archive=$ARCHIVE bytes=$(wc -c < "$ARCHIVE")"
+          echo "package status=ok kind=zip archive=$ARCHIVE bytes=$(wc -c < "$ARCHIVE")"
+          DMG="${{ needs.check.outputs.dmg }}"
+          mv -f "dist/$DMG" "$DMG"
+          echo "package status=ok kind=dmg archive=$DMG bytes=$(wc -c < "$DMG")"
+
+      - name: Notarize and staple
+        if: steps.signing.outputs.notarize == 'true'
+        env:
+          API_KEY_B64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          DMG="${{ needs.check.outputs.dmg }}"
+          KEY_PATH="$RUNNER_TEMP/notary_key.p8"
+          printf '%s' "$API_KEY_B64" | base64 -d > "$KEY_PATH"
+
+          set +e
+          SUBMIT="$(xcrun notarytool submit "$DMG" \
+            --key "$KEY_PATH" --key-id "$API_KEY_ID" --issuer "$API_ISSUER_ID" \
+            --wait --timeout 30m --output-format json)"
+          SUBMIT_CODE=$?
+          set -e
+
+          STATUS="$(printf '%s' "$SUBMIT" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("status",""))' 2>/dev/null || echo unknown)"
+          SUBMISSION_ID="$(printf '%s' "$SUBMIT" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || echo "")"
+          echo "notarize submission=$SUBMISSION_ID status=$STATUS exit=$SUBMIT_CODE"
+
+          if [ "$STATUS" != "Accepted" ]; then
+            echo "notarize status=fail — fetching notary log"
+            if [ -n "$SUBMISSION_ID" ]; then
+              xcrun notarytool log "$SUBMISSION_ID" --key "$KEY_PATH" --key-id "$API_KEY_ID" --issuer "$API_ISSUER_ID" || true
+            fi
+            rm -f "$KEY_PATH"
+            exit 1
+          fi
+          rm -f "$KEY_PATH"
+
+          xcrun stapler staple "$DMG"
+          xcrun stapler validate "$DMG"
+          spctl -a -vvv -t open --context context:primary-signature "$DMG"
+          echo "notarize status=stapled dmg=$DMG bytes=$(wc -c < "$DMG")"
+
+      - name: Upload app archive artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.APP }}-${{ needs.check.outputs.short }}-app
+          path: ${{ needs.check.outputs.archive }}
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Publish GitHub release
         env:
@@ -212,17 +312,17 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ needs.check.outputs.tag }}"
-          ARCHIVE="${{ needs.check.outputs.archive }}"
+          DMG="${{ needs.check.outputs.dmg }}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ARCHIVE" --clobber
-            echo "release status=asset_replaced tag=$TAG"
+            gh release upload "$TAG" "$DMG" --clobber
+            echo "release status=asset_replaced tag=$TAG asset=$DMG"
           else
             FLAGS=(--target "$GITHUB_SHA" --title "$TAG" --generate-notes)
             if [ "${{ needs.check.outputs.prerelease }}" = "true" ]; then
               FLAGS+=(--prerelease)
             fi
-            gh release create "$TAG" "$ARCHIVE" "${FLAGS[@]}"
-            echo "release status=created tag=$TAG prerelease=${{ needs.check.outputs.prerelease }} commit=$GITHUB_SHA"
+            gh release create "$TAG" "$DMG" "${FLAGS[@]}"
+            echo "release status=created tag=$TAG asset=$DMG prerelease=${{ needs.check.outputs.prerelease }}"
           fi
 
       - name: Update appcast
@@ -232,7 +332,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ needs.check.outputs.tag }}"
-          ARCHIVE="${{ needs.check.outputs.archive }}"
+          DMG="${{ needs.check.outputs.dmg }}"
           REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           MIN_SYSTEM="$(plutil -extract LSMinimumSystemVersion raw Support/Info.plist)"
 
@@ -248,8 +348,8 @@ jobs:
 
           python3 Scripts/make-appcast.py \
             --appcast "appcast-work/${APPCAST_FILE}" \
-            --archive "$ARCHIVE" \
-            --download-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${ARCHIVE}" \
+            --archive "$DMG" \
+            --download-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${DMG}" \
             --version "${{ github.run_number }}" \
             --short-version "${{ needs.check.outputs.short }}" \
             --channel "${{ needs.check.outputs.channel }}" \
@@ -270,6 +370,18 @@ jobs:
             echo "appcast status=published branch=$APPCAST_BRANCH"
           fi
 
+      - name: Clean up keychain
+        if: always()
+        run: |
+          set -euo pipefail
+          KEYCHAIN="${{ steps.signing.outputs.keychain }}"
+          if [ -n "$KEYCHAIN" ] && [ -f "$KEYCHAIN" ]; then
+            security delete-keychain "$KEYCHAIN" || true
+            echo "keychain status=deleted"
+          else
+            echo "keychain status=none"
+          fi
+
       - name: Summary
         if: always()
         run: |
@@ -281,5 +393,7 @@ jobs:
             echo "- pre-release: \`${{ needs.check.outputs.prerelease }}\`"
             echo "- build: \`${{ github.run_number }}\`"
             echo "- release: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${{ needs.check.outputs.tag }}"
+            echo "- dmg: \`${{ needs.check.outputs.dmg }}\`"
+            echo "- notarized: \`${{ steps.signing.outputs.notarize }}\`"
             echo "- feed: \`https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${APPCAST_BRANCH}/${APPCAST_FILE}\`"
           } >> "$GITHUB_STEP_SUMMARY"
