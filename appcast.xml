@@ -6,6 +6,15 @@
     <description>Most recent updates to Sukurini</description>
     <language>en</language>
     <item>
+      <title>1.0.2</title>
+      <pubDate>Tue, 28 Jul 2026 06:16:32 +0000</pubDate>
+      <sparkle:version>5</sparkle:version>
+      <sparkle:shortVersionString>1.0.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>https://github.com/ssut/Sukurini/releases/tag/v1.0.2</sparkle:releaseNotesLink>
+      <enclosure url="https://github.com/ssut/Sukurini/releases/download/v1.0.2/Sukurini-1.0.2.dmg" length="4138283" type="application/octet-stream" sparkle:edSignature="RPrNZmSIEhWrCMqmmiR/otvCM1AsjtsvnKITsYvcrg5QpFDseQY8BfR2aNgSQjVyorfMfGkRjsHcyvD/CDybCg==" />
+    </item>
+    <item>
       <title>1.0.1</title>
       <pubDate>Tue, 28 Jul 2026 06:00:21 +0000</pubDate>
       <sparkle:version>4</sparkle:version>
