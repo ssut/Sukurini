@@ -116,6 +116,10 @@
 
 [hidden] { display: none !important; }
 
+/* The sticky bar would otherwise cover whatever an in-page link jumps to. */
+html { scroll-padding-top: calc(var(--nav-h) + 10px); }
+@media (max-width: 720px) { html { scroll-padding-top: 118px; } }
+
 body {
   margin: 0;
   background: var(--bg);
@@ -136,12 +140,32 @@ code {
 }
 
 .skip { position: absolute; left: -9999px; }
-.skip:focus { left: 12px; top: 12px; background: var(--accent); color: #fff; padding: 8px 14px; border-radius: 8px; }
+.skip:focus { left: 12px; top: 12px; z-index: 60; background: var(--accent); color: #fff; padding: 8px 14px; border-radius: 8px; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg);
+  border-bottom: 1px solid var(--sep-soft);
+}
+
+/* Translucency is progressive: a browser without backdrop-filter keeps the
+   solid bar above rather than letting the page read through an unblurred
+   pane. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .topbar {
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    backdrop-filter: saturate(180%) blur(14px);
+  }
+}
 
 .nav {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 12px;
   height: var(--nav-h);
   max-width: var(--wide);
   margin: 0 auto;
@@ -149,16 +173,26 @@ code {
   font-size: 14px;
 }
 
-/* One height for the whole right-hand group, so the star widget, the language
-   switch and the theme toggle sit on a single baseline in every language. */
-.ghstar, .lang, .theme { height: var(--ctl-h); flex: none; }
+/* One height for the whole right-hand group, so the star widget, the coffee
+   link, the language switch and the theme toggle sit on a single baseline in
+   every language. */
+.ghstar, .bmc, .lang, .theme { height: var(--ctl-h); flex: none; }
 
 /* Narrow screens cannot fit the row, and the controls no longer squash to make
-   room, so they wrap onto a second line instead of pushing out a scrollbar.
-   Every label in here is the same width in all three languages, so the wrapped
-   header still cannot change height when the reader switches. */
-@media (max-width: 560px) {
-  .nav { height: auto; flex-wrap: wrap; gap: 14px; padding: 14px 16px; }
+   room, so they wrap instead of pushing out a scrollbar. Every label in here is
+   the same width in all three languages, so the wrapped header still cannot
+   change height when the reader switches. */
+@media (max-width: 720px) {
+  .nav { height: auto; flex-wrap: wrap; gap: 12px; padding: 14px 16px; }
+}
+
+/* Below this the two support links drop to their icons, which buys back enough
+   room to keep the bar on one line down to phone widths. Both carry an
+   aria-label, so the hidden text costs nothing to a screen reader. */
+@media (max-width: 620px) {
+  .ghstar > span, .bmc > span { display: none; }
+  .ghstar, .bmc { padding: 0 10px; }
+  .ghstar b { padding-left: 7px; }
 }
 
 .brand {
@@ -173,7 +207,6 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin-left: auto;
   padding: 0 12px;
   border-radius: 8px;
   border: 1px solid var(--sep);
@@ -191,6 +224,26 @@ code {
   font-variant-numeric: tabular-nums;
   color: var(--fg);
 }
+
+/* Buy Me a Coffee's own yellow, on the same 30px shell as the star button so
+   the brand colour is the only thing that separates them. The ink is the light
+   theme's near-black in both themes, since the plate never changes. */
+.bmc {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #ffdd00;
+  background: #ffdd00;
+  color: #1d1d1f;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.bmc:hover { background: #ffe74d; border-color: #ffe74d; }
 
 .theme {
   display: inline-flex;
