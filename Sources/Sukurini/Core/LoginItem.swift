@@ -8,7 +8,7 @@ enum LoginItem {
         var errorDescription: String? {
             switch self {
             case .notInstalledInApplications:
-                return "Move Sukurini to /Applications to enable launch at login."
+                return L10n.Startup.needsApplications
             }
         }
     }
@@ -18,11 +18,9 @@ enum LoginItem {
             Log.settings.debug("login item unavailable reason=not_an_app_bundle path=\(bundlePath, privacy: .public)")
             return false
         }
-        let path = bundlePath
-        let roots = installRoots()
-        let installed = roots.contains { path.hasPrefix($0 + "/") }
+        let installed = AppInstallLocation.isInstalled(Bundle.main.bundleURL)
         if !installed {
-            Log.settings.debug("login item unavailable reason=outside_applications path=\(path, privacy: .public)")
+            Log.settings.debug("login item unavailable reason=outside_applications path=\(bundlePath, privacy: .public)")
         }
         return installed
     }
@@ -79,21 +77,6 @@ enum LoginItem {
             return .notFound
         }
         return SMAppService.mainApp.status
-    }
-
-    private static func installRoots() -> [String] {
-        let system = URL(fileURLWithPath: "/Applications", isDirectory: true).standardizedFileURL
-        let user = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Applications", isDirectory: true)
-            .standardizedFileURL
-        let candidates = [
-            system.path,
-            system.resolvingSymlinksInPath().path,
-            user.path,
-            user.resolvingSymlinksInPath().path
-        ]
-        var seen = Set<String>()
-        return candidates.filter { !$0.isEmpty && seen.insert($0).inserted }
     }
 
     private static func description(for status: SMAppService.Status) -> String {

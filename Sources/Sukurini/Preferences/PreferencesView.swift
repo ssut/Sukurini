@@ -31,6 +31,8 @@ struct PreferencesView: View {
     @State private var loginNeedsApproval = false
     @State private var loginStatus = "Unknown"
     @State private var loginError: String?
+    @State private var installOffer: AppInstallLocation.State?
+    @State private var installing = false
     @State private var ocrEnabled = true
     @State private var lazyIndexOnBattery = true
     @State private var pauseIndexingOnLowPower = true
@@ -987,6 +989,18 @@ struct PreferencesView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                if installOffer != nil {
+                    HStack(spacing: 8) {
+                        Button(L10n.Install.settingsButton) { moveToApplications() }
+                            .disabled(installing)
+                        if installing {
+                            ProgressView().controlSize(.small)
+                            Text(L10n.Install.working)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
             }
             if loginNeedsApproval {
                 Button(L10n.Startup.openLoginItems) { LoginItem.openSystemSettings() }
@@ -1638,7 +1652,48 @@ struct PreferencesView: View {
         loginNeedsApproval = LoginItem.requiresApproval
         launchAtLogin = LoginItem.isEnabled
         loginStatus = LoginItem.statusDescription
-        Log.settings.debug("preferences login state available=\(loginAvailable, privacy: .public) enabled=\(launchAtLogin, privacy: .public) status=\(loginStatus, privacy: .public)")
+        let location = AppInstallLocation.current()
+        installOffer = location.canInstall ? location : nil
+        Log.settings.debug("preferences login state available=\(loginAvailable, privacy: .public) enabled=\(launchAtLogin, privacy: .public) status=\(loginStatus, privacy: .public) installOffer=\(self.installOffer != nil, privacy: .public)")
+    }
+
+    private func moveToApplications() {
+        guard let location = installOffer, !installing else { return }
+        guard confirmMoveToApplications(location) else { return }
+        installing = true
+        loginError = nil
+        Log.settings.info("preferences install requested source=\(location.sourceURL.path, privacy: .public) destination=\(location.destination.path, privacy: .public)")
+
+        AppInstallLocation.install(location) { result in
+            switch result {
+            case .success(let url):
+                Telemetry.log(.settingChanged, ["setting": "install_location", "state": "moved"])
+                Log.settings.info("preferences install succeeded path=\(url.path, privacy: .public)")
+                AppInstallLocation.relaunch(at: url)
+            case .failure(let error):
+                installing = false
+                loginError = error.localizedDescription
+                Log.settings.error("preferences install failed error=\(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private func confirmMoveToApplications(_ location: AppInstallLocation.State) -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        if FileManager.default.fileExists(atPath: location.destination.path) {
+            alert.messageText = L10n.Install.replaceTitle(AppInstallLocation.folderName(location.destination))
+            alert.informativeText = L10n.Install.replaceBody + "\n\n" + L10n.Install.restartNotice
+            alert.addButton(withTitle: L10n.Install.replaceAction)
+        } else {
+            alert.messageText = L10n.Install.confirmTitle(AppInstallLocation.folderName(location.destination))
+            alert.informativeText = L10n.Install.restartNotice
+            alert.addButton(withTitle: location.copiesOnly ? L10n.Install.copyAction : L10n.Install.moveAction)
+        }
+        alert.addButton(withTitle: L10n.Common.cancel)
+        let confirmed = alert.runModal() == .alertFirstButtonReturn
+        Log.settings.info("preferences install confirmation confirmed=\(confirmed, privacy: .public) occupied=\(location.destinationOccupied, privacy: .public)")
+        return confirmed
     }
 
     private func selectFolder(_ folder: URL) {

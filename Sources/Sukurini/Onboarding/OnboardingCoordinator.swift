@@ -7,6 +7,7 @@ final class OnboardingCoordinator {
 
     private var stagedFolder: URL?
     private var idleObserver: NSObjectProtocol?
+    private var relaunching = false
 
     deinit {
         removeIdleObserver()
@@ -32,7 +33,16 @@ final class OnboardingCoordinator {
         Log.settings.info("onboarding folder switch applied reason=\(reason, privacy: .public) applied=\(applied, privacy: .public) path=\(target.path, privacy: .public)")
     }
 
+    func suspendForRelaunch(reason: String) {
+        relaunching = true
+        Log.settings.info("onboarding suspended for relaunch reason=\(reason, privacy: .public)")
+    }
+
     func complete(reason: String) {
+        guard !relaunching else {
+            Log.settings.info("onboarding completion skipped reason=relaunching trigger=\(reason, privacy: .public)")
+            return
+        }
         flushStagedFolder(reason: reason)
         settings.markOnboardingCompleted()
         Log.settings.info("onboarding completed reason=\(reason, privacy: .public) pendingFolder=\(self.stagedFolder?.path ?? "none", privacy: .public)")

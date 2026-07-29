@@ -1427,3 +1427,150 @@ extension L10n {
         }
     }
 }
+
+extension L10n {
+    enum Install {
+        static var stepTitleMove: String {
+            tr(
+                en: "Move Sukurini to your Applications folder",
+                ko: "Sukurini를 응용 프로그램 폴더로 옮겨 주세요",
+                ja: "Sukurini をアプリケーションフォルダに移してください"
+            )
+        }
+        static var stepTitleCopy: String {
+            tr(
+                en: "Copy Sukurini to your Applications folder",
+                ko: "Sukurini를 응용 프로그램 폴더로 복사해 주세요",
+                ja: "Sukurini をアプリケーションフォルダにコピーしてください"
+            )
+        }
+        static func stepSubtitle(_ location: String) -> String {
+            tr(
+                en: "Sukurini is running from \(location). Outside the Applications folder, automatic updates stop working and macOS will not let it start at login.",
+                ko: "지금 Sukurini는 \(location)에서 실행 중이에요. 응용 프로그램 폴더 밖에 있으면 자동 업데이트가 멈추고, macOS가 로그인할 때 실행하는 것도 막아요.",
+                ja: "いま Sukurini は \(location) から動いています。アプリケーションフォルダの外にあると自動アップデートが止まり、macOS はログイン時の起動も許可しません。"
+            )
+        }
+        static var stepSubtitleTranslocated: String {
+            tr(
+                en: "macOS is running Sukurini from a temporary read-only copy because the real one is still on the disk image. Updates and launch at login stay off until a copy lands in Applications.",
+                ko: "진짜 Sukurini가 아직 디스크 이미지 안에 있어서, macOS가 읽기 전용 임시 사본으로 실행하고 있어요. 응용 프로그램 폴더에 사본이 놓이기 전까진 업데이트도 로그인 실행도 안 돼요.",
+                ja: "本体がまだディスクイメージの中にあるため、macOS は読み込み専用の一時コピーで Sukurini を動かしています。アプリケーションフォルダにコピーが置かれるまで、アップデートもログイン時の起動も使えません。"
+            )
+        }
+
+        static var nowLabel: String { tr(en: "Now", ko: "지금", ja: "現在") }
+        static var afterLabel: String { tr(en: "After", ko: "옮긴 뒤", ja: "移動後") }
+
+        static var benefitUpdates: String {
+            tr(
+                en: "Automatic updates keep arriving on their own.",
+                ko: "자동 업데이트가 알아서 계속 들어와요.",
+                ja: "自動アップデートがそのまま届き続けます。"
+            )
+        }
+        static var benefitLogin: String {
+            tr(
+                en: "Launch at login becomes available.",
+                ko: "로그인할 때 자동 실행을 켤 수 있어요.",
+                ja: "ログイン時の自動起動を使えるようになります。"
+            )
+        }
+        static var benefitSingleCopy: String {
+            tr(
+                en: "The copy you are running now moves to the Trash, so only one is left.",
+                ko: "지금 실행 중인 사본은 휴지통으로 가서, 하나만 남아요.",
+                ja: "いま動いているコピーはゴミ箱に入り、1 つだけが残ります。"
+            )
+        }
+        static var benefitKeepsOriginal: String {
+            tr(
+                en: "The original stays where it is — you can eject the disk image afterwards.",
+                ko: "원본은 그 자리에 그대로 두고, 디스크 이미지는 나중에 꺼내면 돼요.",
+                ja: "元のコピーはそのまま残るので、ディスクイメージはあとで取り出せます。"
+            )
+        }
+        static func userFolderNotice(_ path: String) -> String {
+            tr(
+                en: "Your account cannot write to /Applications, so Sukurini goes to \(path) instead.",
+                ko: "이 계정은 /Applications에 쓸 수 없어서, 대신 \(path)에 넣을게요.",
+                ja: "このアカウントは /Applications に書き込めないため、代わりに \(path) に入れます。"
+            )
+        }
+        static var restartNotice: String {
+            tr(
+                en: "Sukurini quits and opens again from its new spot. Nothing you have set up is lost.",
+                ko: "Sukurini가 종료됐다가 새 자리에서 다시 열려요. 지금까지 맞춰 둔 건 그대로예요.",
+                ja: "Sukurini はいったん終了し、新しい場所から開き直します。設定した内容はそのまま残ります。"
+            )
+        }
+
+        static var moveAction: String { tr(en: "Move and Restart", ko: "옮기고 다시 시작", ja: "移動して再起動") }
+        static var copyAction: String { tr(en: "Copy and Restart", ko: "복사하고 다시 시작", ja: "コピーして再起動") }
+        static var notNow: String { tr(en: "Not now", ko: "나중에 하기", ja: "あとにする") }
+        static var working: String { tr(en: "Moving Sukurini…", ko: "Sukurini를 옮기는 중…", ja: "Sukurini を移しています…") }
+
+        static var settingsButton: String {
+            tr(en: "Move to Applications", ko: "응용 프로그램 폴더로 옮기기", ja: "アプリケーションフォルダに移す")
+        }
+        static func confirmTitle(_ path: String) -> String {
+            tr(
+                en: "Move Sukurini to \(path)?",
+                ko: "Sukurini를 \(path)로 옮길까요?",
+                ja: "Sukurini を \(path) に移しますか？"
+            )
+        }
+
+        static func replaceTitle(_ path: String) -> String {
+            tr(
+                en: "Replace the Sukurini already in \(path)?",
+                ko: "\(path)에 이미 있는 Sukurini를 바꿀까요?",
+                ja: "\(path) にすでにある Sukurini を置き換えますか？"
+            )
+        }
+        static var replaceBody: String {
+            tr(
+                en: "The one already there moves to the Trash and this copy takes its place. You can put it back from the Trash if you change your mind.",
+                ko: "먼저 있던 건 휴지통으로 가고, 지금 이 사본이 그 자리에 들어가요. 마음이 바뀌면 휴지통에서 되돌리면 돼요.",
+                ja: "先にあったものはゴミ箱に入り、このコピーがその場所に入ります。気が変わったらゴミ箱から戻せます。"
+            )
+        }
+        static var replaceAction: String { tr(en: "Replace", ko: "바꾸기", ja: "置き換える") }
+
+        static var failureNotInstallable: String {
+            tr(
+                en: "Sukurini cannot move itself from where it is right now.",
+                ko: "지금 있는 자리에서는 Sukurini가 스스로 옮길 수 없어요.",
+                ja: "いまいる場所からは Sukurini 自身で移動できません。"
+            )
+        }
+        static func failureDestinationRunning(_ path: String) -> String {
+            tr(
+                en: "Another Sukurini is already running from \(path). Quit that one first.",
+                ko: "\(path)에서 다른 Sukurini가 이미 돌고 있어요. 그걸 먼저 종료해 주세요.",
+                ja: "\(path) で別の Sukurini がすでに動いています。先にそちらを終了してください。"
+            )
+        }
+        static func failureReplace(_ reason: String) -> String {
+            tr(
+                en: "Could not move the copy already there to the Trash: \(reason)",
+                ko: "먼저 있던 사본을 휴지통으로 보내지 못했어요: \(reason)",
+                ja: "先にあったコピーをゴミ箱に移せませんでした: \(reason)"
+            )
+        }
+        static func failureCopy(_ reason: String) -> String {
+            tr(
+                en: "Could not copy Sukurini across: \(reason)",
+                ko: "Sukurini를 복사하지 못했어요: \(reason)",
+                ja: "Sukurini をコピーできませんでした: \(reason)"
+            )
+        }
+        static var failureVerification: String {
+            tr(
+                en: "The copy did not arrive intact, so it was removed. Drag Sukurini into Applications in Finder instead.",
+                ko: "사본이 온전하게 넘어가지 않아서 지웠어요. 대신 Finder에서 Sukurini를 응용 프로그램 폴더로 끌어다 놓아 주세요.",
+                ja: "コピーが壊れていたため削除しました。代わりに Finder で Sukurini をアプリケーションフォルダにドラッグしてください。"
+            )
+        }
+    }
+}

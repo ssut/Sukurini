@@ -3,6 +3,7 @@ import SwiftUI
 
 struct OnboardingView: View {
     enum Step: String, CaseIterable {
+        case install
         case permission
         case recommendations
         case backfill
@@ -29,9 +30,12 @@ struct OnboardingView: View {
     private let coordinator: OnboardingCoordinator
     private let backfillProvider: () -> BackfillControlling?
     private let onFinish: () -> Void
+    private let install: AppInstallLocation.State
 
-    @State private var steps: [Step] = [.permission, .recommendations, .welcome]
-    @State private var step = Step.permission
+    @State private var steps: [Step]
+    @State private var step: Step
+    @State private var installing = false
+    @State private var installError: String?
     @State private var probes: [FolderAccess.Probe] = []
     @State private var accessChecking = true
     @State private var recommendations: [OnboardingRecommendation] = []
@@ -61,6 +65,12 @@ struct OnboardingView: View {
         self.coordinator = coordinator
         self.backfillProvider = backfillProvider
         self.onFinish = onFinish
+
+        let location = AppInstallLocation.current()
+        self.install = location
+        let opening: [Step] = location.recommendsInstall ? [.install, .permission] : [.permission]
+        _step = State(initialValue: opening[0])
+        _steps = State(initialValue: opening + [.recommendations, .welcome])
     }
 
     var body: some View {
@@ -106,6 +116,8 @@ struct OnboardingView: View {
 
     private var stepTint: Color {
         switch step {
+        case .install:
+            return .indigo
         case .permission:
             return .blue
         case .recommendations:
@@ -120,6 +132,8 @@ struct OnboardingView: View {
     @ViewBuilder
     private var content: some View {
         switch step {
+        case .install:
+            installStep
         case .permission:
             permissionStep
         case .recommendations:
@@ -145,6 +159,82 @@ struct OnboardingView: View {
             }
         }
         .padding(.bottom, 4)
+    }
+
+    private var installStep: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            stepHeader(
+                symbol: "arrow.down.app.fill",
+                tint: .indigo,
+                title: install.copiesOnly ? L10n.Install.stepTitleCopy : L10n.Install.stepTitleMove,
+                subtitle: install.translocated
+                    ? L10n.Install.stepSubtitleTranslocated
+                    : L10n.Install.stepSubtitle(AppInstallLocation.folderName(install.sourceURL))
+            )
+
+            OnboardingCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    locationRow(
+                        symbol: install.copiesOnly ? "opticaldiscdrive.fill" : "folder.fill",
+                        tint: .secondary,
+                        label: L10n.Install.nowLabel,
+                        path: AppInstallLocation.displayPath(install.sourceURL)
+                    )
+                    locationRow(
+                        symbol: "checkmark.seal.fill",
+                        tint: .indigo,
+                        label: L10n.Install.afterLabel,
+                        path: AppInstallLocation.displayPath(install.destination)
+                    )
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 9) {
+                OnboardingSummaryRow(symbol: "arrow.triangle.2.circlepath", tint: .indigo, text: L10n.Install.benefitUpdates)
+                OnboardingSummaryRow(symbol: "power", tint: .indigo, text: L10n.Install.benefitLogin)
+                OnboardingSummaryRow(
+                    symbol: install.copiesOnly ? "externaldrive.fill" : "trash.fill",
+                    tint: .indigo,
+                    text: install.copiesOnly ? L10n.Install.benefitKeepsOriginal : L10n.Install.benefitSingleCopy
+                )
+                if install.destinationIsUserFolder {
+                    OnboardingSummaryRow(
+                        symbol: "person.crop.circle",
+                        tint: .orange,
+                        text: L10n.Install.userFolderNotice(AppInstallLocation.displayPath(install.destination))
+                    )
+                }
+            }
+
+            if let installError {
+                Text(installError)
+                    .font(.callout)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Text(L10n.Install.restartNotice)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func locationRow(symbol: String, tint: Color, label: String, path: String) -> some View {
+        HStack(spacing: 12) {
+            OnboardingIconChip(symbol: symbol, tint: tint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label.uppercased())
+                    .font(.system(size: 9, weight: .semibold))
+                    .tracking(0.6)
+                    .foregroundStyle(.secondary)
+                Text(path)
+                    .font(.callout)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     private var permissionStep: some View {
@@ -629,11 +719,13 @@ struct OnboardingView: View {
     }
 
     private var busy: Bool {
-        pendingAdvance || relocating
+        pendingAdvance || relocating || installing
     }
 
     private var primaryTitle: String {
         switch step {
+        case .install:
+            return install.copiesOnly ? L10n.Install.copyAction : L10n.Install.moveAction
         case .permission:
             return L10n.Onboarding.continueAction
         case .recommendations:
@@ -653,6 +745,8 @@ struct OnboardingView: View {
 
     private var secondaryTitle: String? {
         switch step {
+        case .install:
+            return L10n.Install.notNow
         case .permission:
             return accessBlocked ? L10n.Onboarding.skipForNow : nil
         case .recommendations:
@@ -669,6 +763,8 @@ struct OnboardingView: View {
 
     private func primaryAction() {
         switch step {
+        case .install:
+            performInstall()
         case .permission:
             move(to: .recommendations)
         case .recommendations:
@@ -690,6 +786,9 @@ struct OnboardingView: View {
 
     private func secondaryAction() {
         switch step {
+        case .install:
+            Log.settings.info("onboarding install declined source=\(self.install.sourceURL.path, privacy: .public)")
+            move(to: .permission)
         case .permission:
             Log.settings.info("onboarding permission skipped blocked=\(self.accessBlocked, privacy: .public)")
             move(to: .recommendations)
@@ -735,7 +834,7 @@ struct OnboardingView: View {
         recommendations = OnboardingSetup.recommendations()
         selection = Set(recommendations.filter { !$0.satisfied }.map(\.kind))
         refreshSteps()
-        Log.settings.info("onboarding started presentation=\(self.presentation.rawValue, privacy: .public) allSteps=\(self.showsAllSteps, privacy: .public) steps=\(self.steps.map(\.rawValue).joined(separator: ","), privacy: .public)")
+        Log.settings.info("onboarding started presentation=\(self.presentation.rawValue, privacy: .public) allSteps=\(self.showsAllSteps, privacy: .public) steps=\(self.steps.map(\.rawValue).joined(separator: ","), privacy: .public) installStep=\(self.install.recommendsInstall, privacy: .public) signature=\(self.install.signature.rawValue, privacy: .public) placement=\(self.install.placement.rawValue, privacy: .public)")
         runAccessProbe(requested: false)
         reloadBackfillProgress()
         prefetchEstimate()
@@ -760,6 +859,7 @@ struct OnboardingView: View {
     private func relocalizeRecommendations() {
         recommendations = OnboardingSetup.recommendations()
         outcome.failures = []
+        installError = nil
         Log.settings.info("onboarding relocalized language=\(LocalizationCenter.shared.language.rawValue, privacy: .public) recommendations=\(self.recommendations.count, privacy: .public)")
     }
 
@@ -781,6 +881,9 @@ struct OnboardingView: View {
 
     private func refreshSteps() {
         var next: [Step] = []
+        if install.recommendsInstall {
+            next.append(.install)
+        }
         if showsAllSteps || accessChecking || FolderAccess.isBlocked(probes) || step == .permission {
             next.append(.permission)
         }
@@ -822,9 +925,44 @@ struct OnboardingView: View {
             reloadBackfillProgress()
         case .welcome:
             coordinator.flushStagedFolder(reason: "welcome_step")
-        case .permission, .recommendations:
+        case .install, .permission, .recommendations:
             break
         }
+    }
+
+    private func performInstall() {
+        guard !installing else { return }
+        let occupied = FileManager.default.fileExists(atPath: install.destination.path)
+        guard !occupied || confirmReplace() else { return }
+        installing = true
+        installError = nil
+        Log.settings.info("onboarding install requested source=\(self.install.sourceURL.path, privacy: .public) destination=\(self.install.destination.path, privacy: .public)")
+
+        AppInstallLocation.install(install) { result in
+            switch result {
+            case .success(let url):
+                Telemetry.log(.settingChanged, ["setting": "install_location", "state": "moved"])
+                Log.settings.info("onboarding install succeeded path=\(url.path, privacy: .public)")
+                coordinator.suspendForRelaunch(reason: "install")
+                AppInstallLocation.relaunch(at: url)
+            case .failure(let error):
+                installing = false
+                installError = error.localizedDescription
+                Log.settings.error("onboarding install failed error=\(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private func confirmReplace() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = L10n.Install.replaceTitle(AppInstallLocation.folderName(install.destination))
+        alert.informativeText = L10n.Install.replaceBody
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: L10n.Install.replaceAction)
+        alert.addButton(withTitle: L10n.Common.cancel)
+        let confirmed = alert.runModal() == .alertFirstButtonReturn
+        Log.settings.info("onboarding install replace confirmation confirmed=\(confirmed, privacy: .public) path=\(self.install.destination.path, privacy: .public)")
+        return confirmed
     }
 
     private func applyRecommendations() {
@@ -855,7 +993,6 @@ struct OnboardingView: View {
             OnboardingSetup.enableTelemetry()
             result.telemetryEnabled = true
         }
-
         outcome = result
         Log.settings.info("onboarding recommendations applied chosen=\(chosen.map(\.rawValue).sorted().joined(separator: ","), privacy: .public) thumbnail=\(result.thumbnailDisabled, privacy: .public) webp=\(result.webpEnabled, privacy: .public) telemetry=\(result.telemetryEnabled, privacy: .public) folder=\(result.stagedFolder?.path ?? "none", privacy: .public) failures=\(result.failures.count, privacy: .public)")
 
