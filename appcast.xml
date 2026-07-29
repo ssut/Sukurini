@@ -6,6 +6,18 @@
     <description>Most recent updates to Sukurini</description>
     <language>en</language>
     <item>
+      <title>1.1.0</title>
+      <pubDate>Wed, 29 Jul 2026 06:36:13 +0000</pubDate>
+      <sparkle:version>7</sparkle:version>
+      <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description sparkle:format="markdown">### Added
+- **Startup** — Offer launch at login during onboarding
+- **Install** — Offer to move Sukurini into Applications on first run</description>
+      <sparkle:fullReleaseNotesLink>https://github.com/ssut/Sukurini/releases</sparkle:fullReleaseNotesLink>
+      <enclosure url="https://github.com/ssut/Sukurini/releases/download/v1.1.0/Sukurini-1.1.0.dmg" length="4193191" type="application/octet-stream" sparkle:edSignature="Ct/REHAkjpa7/EOnn4W4rea7P6/Hc46JJAoCJWnZkNYHlG24BOLzhhzUVM2B7RUq6rsww7lS+u0SMRqBK2C5Aw==" />
+    </item>
+    <item>
       <title>1.0.3</title>
       <pubDate>Tue, 28 Jul 2026 10:56:41 +0000</pubDate>
       <sparkle:version>6</sparkle:version>
