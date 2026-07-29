@@ -3,6 +3,7 @@ import Foundation
 enum OnboardingRecommendationKind: String, CaseIterable {
     case thumbnail
     case folder
+    case login
     case webp
     case telemetry
 }
@@ -20,10 +21,12 @@ struct OnboardingOutcome {
     var thumbnailDisabled = false
     var webpEnabled = false
     var telemetryEnabled = false
+    var loginEnabled = false
     var stagedFolder: URL?
     var movedCount = 0
     var moveSource: URL?
     var failures: [String] = []
+    var notices: [String] = []
 }
 
 enum OnboardingSetup {
@@ -41,7 +44,7 @@ enum OnboardingSetup {
         let capture = ScreencaptureDefaults.currentLocation()?.standardizedFileURL
         let folderSatisfied = capture?.path == target.path && settings.activeFolder?.standardizedFileURL.path == target.path
 
-        let list = [
+        var list = [
             OnboardingRecommendation(
                 kind: .thumbnail,
                 title: L10n.Onboarding.recommendThumbnail,
@@ -68,9 +71,32 @@ enum OnboardingSetup {
             )
         ]
 
+        if LoginItem.isAvailable {
+            list.insert(
+                OnboardingRecommendation(
+                    kind: .login,
+                    title: L10n.Onboarding.recommendLogin,
+                    detail: L10n.Onboarding.recommendLoginDetail,
+                    satisfied: LoginItem.isEnabled || LoginItem.requiresApproval
+                ),
+                at: 2
+            )
+        } else {
+            Log.settings.info("onboarding login recommendation hidden reason=login_item_unavailable")
+        }
+
         let pending = list.filter { !$0.satisfied }.map(\.kind.rawValue).joined(separator: ",")
         Log.settings.info("onboarding recommendations built pending=\(pending.isEmpty ? "none" : pending, privacy: .public)")
         return list
+    }
+
+    static func enableLoginItem() throws {
+        guard !LoginItem.isEnabled else {
+            Log.settings.info("onboarding login item skipped reason=already_enabled")
+            return
+        }
+        try LoginItem.setEnabled(true)
+        Log.settings.info("onboarding login item enabled status=\(LoginItem.statusDescription, privacy: .public) approval=\(LoginItem.requiresApproval, privacy: .public)")
     }
 
     static func disableThumbnailPreview() -> Bool {

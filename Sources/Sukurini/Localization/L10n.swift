@@ -1048,9 +1048,9 @@ extension L10n {
         }
         static var recommendationsSubtitle: String {
             tr(
-                en: "Three settings that make Sukurini feel right from the first screenshot. Untick anything you would rather keep as it is.",
-                ko: "첫 스크린샷부터 Sukurini가 제 몫을 하게 해 주는 세 가지예요. 그대로 두고 싶은 건 체크를 풀면 돼요.",
-                ja: "最初のスクリーンショットから Sukurini がしっくりくる 3 つの設定です。そのままにしたいものはチェックを外してください。"
+                en: "A handful of settings that make Sukurini feel right from the first screenshot. Untick anything you would rather keep as it is.",
+                ko: "첫 스크린샷부터 Sukurini가 제 몫을 하게 해 주는 몇 가지예요. 그대로 두고 싶은 건 체크를 풀면 돼요.",
+                ja: "最初のスクリーンショットから Sukurini がしっくりくる、いくつかの設定です。そのままにしたいものはチェックを外してください。"
             )
         }
         static var alreadySet: String { tr(en: "Already set", ko: "이미 됨", ja: "設定済み") }
@@ -1067,6 +1067,20 @@ extension L10n {
                 en: "macOS holds each screenshot for about five seconds while the preview fades. Off, it lands right away.",
                 ko: "macOS는 미리보기가 사라지는 5초 남짓 동안 스크린샷을 붙잡고 있어요. 꺼 두면 바로 떨어져요.",
                 ja: "macOS はプレビューが消えるまでの 5 秒ほど、スクリーンショットを持ったままにします。オフにすればすぐ保存されます。"
+            )
+        }
+        static var recommendLogin: String {
+            tr(
+                en: "Start Sukurini when you log in",
+                ko: "로그인하면 Sukurini도 같이 켜기",
+                ja: "ログインしたら Sukurini も起動する"
+            )
+        }
+        static var recommendLoginDetail: String {
+            tr(
+                en: "No window opens — it just waits in the menu bar, ready for the first screenshot of the day.",
+                ko: "창은 안 뜨고 메뉴 막대에서 조용히 기다려요. 그날 첫 스크린샷부터 바로 받아요.",
+                ja: "ウィンドウは開かず、メニューバーで静かに待ちます。その日の最初のスクリーンショットからすぐ受け取ります。"
             )
         }
         static var recommendTelemetry: String {
@@ -1343,11 +1357,33 @@ extension L10n {
             )
         }
 
+        static var summaryLaunchAtLogin: String {
+            tr(
+                en: "Sukurini starts on its own when you log in.",
+                ko: "로그인하면 Sukurini가 알아서 켜져요.",
+                ja: "ログインすると Sukurini が自動で起動します。"
+            )
+        }
+        static var summaryLoginNeedsApproval: String {
+            tr(
+                en: "Switch Sukurini on under System Settings › General › Login Items so it can start by itself.",
+                ko: "시스템 설정 › 일반 › 로그인 항목에서 Sukurini를 켜 주면 알아서 실행돼요.",
+                ja: "システム設定 › 一般 › ログイン項目で Sukurini をオンにすると、自動で起動します。"
+            )
+        }
+
         static var failureThumbnail: String {
             tr(
                 en: "Could not turn off the macOS thumbnail preview.",
                 ko: "macOS 썸네일 미리보기를 끄지 못했어요.",
                 ja: "macOS のサムネイルプレビューをオフにできませんでした。"
+            )
+        }
+        static func failureLogin(_ reason: String) -> String {
+            tr(
+                en: "Could not turn on launch at login: \(reason)",
+                ko: "로그인할 때 실행하기를 켜지 못했어요: \(reason)",
+                ja: "ログイン時の起動をオンにできませんでした: \(reason)"
             )
         }
         static func failureFolder(_ path: String) -> String {

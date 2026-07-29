@@ -449,6 +449,8 @@ struct OnboardingView: View {
             return "bolt.fill"
         case .folder:
             return "folder.badge.plus"
+        case .login:
+            return "power"
         case .webp:
             return "archivebox.fill"
         case .telemetry:
@@ -462,6 +464,8 @@ struct OnboardingView: View {
             return .orange
         case .folder:
             return .blue
+        case .login:
+            return .teal
         case .webp:
             return .green
         case .telemetry:
@@ -611,6 +615,9 @@ struct OnboardingView: View {
                     ForEach(summaryLines, id: \.self) { line in
                         OnboardingSummaryRow(symbol: "checkmark.circle.fill", tint: .green, text: line)
                     }
+                    ForEach(outcome.notices, id: \.self) { notice in
+                        OnboardingSummaryRow(symbol: "info.circle.fill", tint: .blue, text: notice)
+                    }
                     ForEach(outcome.failures, id: \.self) { failure in
                         OnboardingSummaryRow(symbol: "exclamationmark.triangle.fill", tint: .orange, text: failure)
                     }
@@ -672,6 +679,9 @@ struct OnboardingView: View {
         }
         if !ScreencaptureDefaults.showsThumbnail() {
             lines.append(L10n.Onboarding.summaryThumbnailOff)
+        }
+        if LoginItem.isEnabled {
+            lines.append(L10n.Onboarding.summaryLaunchAtLogin)
         }
         if AppSettings.shared.webpConversionEnabled {
             lines.append(L10n.Onboarding.summaryWebP)
@@ -859,6 +869,7 @@ struct OnboardingView: View {
     private func relocalizeRecommendations() {
         recommendations = OnboardingSetup.recommendations()
         outcome.failures = []
+        outcome.notices = []
         installError = nil
         Log.settings.info("onboarding relocalized language=\(LocalizationCenter.shared.language.rawValue, privacy: .public) recommendations=\(self.recommendations.count, privacy: .public)")
     }
@@ -993,8 +1004,20 @@ struct OnboardingView: View {
             OnboardingSetup.enableTelemetry()
             result.telemetryEnabled = true
         }
+        if chosen.contains(.login) {
+            do {
+                try OnboardingSetup.enableLoginItem()
+                result.loginEnabled = LoginItem.isEnabled
+                if LoginItem.requiresApproval {
+                    result.notices.append(L10n.Onboarding.summaryLoginNeedsApproval)
+                }
+            } catch {
+                result.failures.append(L10n.Onboarding.failureLogin(error.localizedDescription))
+            }
+        }
+
         outcome = result
-        Log.settings.info("onboarding recommendations applied chosen=\(chosen.map(\.rawValue).sorted().joined(separator: ","), privacy: .public) thumbnail=\(result.thumbnailDisabled, privacy: .public) webp=\(result.webpEnabled, privacy: .public) telemetry=\(result.telemetryEnabled, privacy: .public) folder=\(result.stagedFolder?.path ?? "none", privacy: .public) failures=\(result.failures.count, privacy: .public)")
+        Log.settings.info("onboarding recommendations applied chosen=\(chosen.map(\.rawValue).sorted().joined(separator: ","), privacy: .public) thumbnail=\(result.thumbnailDisabled, privacy: .public) webp=\(result.webpEnabled, privacy: .public) telemetry=\(result.telemetryEnabled, privacy: .public) login=\(result.loginEnabled, privacy: .public) folder=\(result.stagedFolder?.path ?? "none", privacy: .public) failures=\(result.failures.count, privacy: .public)")
 
         guard let target else {
             finishApply()
