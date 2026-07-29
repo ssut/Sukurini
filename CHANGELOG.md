@@ -2,6 +2,12 @@
 
 Generated from the commit history on every release.
 
+## 1.1.0 — 2026-07-29
+
+### Added
+- **Startup** — Offer launch at login during onboarding
+- **Install** — Offer to move Sukurini into Applications on first run
+
 ## 1.0.3 — 2026-07-28
 
 ### Added
