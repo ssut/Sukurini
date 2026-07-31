@@ -6,6 +6,17 @@
     <description>Most recent updates to Sukurini</description>
     <language>en</language>
     <item>
+      <title>1.2.0</title>
+      <pubDate>Fri, 31 Jul 2026 05:17:19 +0000</pubDate>
+      <sparkle:version>8</sparkle:version>
+      <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description sparkle:format="markdown">### Added
+- **Shortcut** — Paste the latest screenshot without touching the clipboard</description>
+      <sparkle:fullReleaseNotesLink>https://github.com/ssut/Sukurini/releases</sparkle:fullReleaseNotesLink>
+      <enclosure url="https://github.com/ssut/Sukurini/releases/download/v1.2.0/Sukurini-1.2.0.dmg" length="4207720" type="application/octet-stream" sparkle:edSignature="lk/W/UPGrB7YBjC3kp7haRMH6m0DsC2y0KhuRKpWmZp1uwr7Xswej1RI8Q4WpN1lTFeaFI5xldFI6x4zLDoWDA==" />
+    </item>
+    <item>
       <title>1.1.0</title>
       <pubDate>Wed, 29 Jul 2026 06:36:13 +0000</pubDate>
       <sparkle:version>7</sparkle:version>
