@@ -17,7 +17,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var converter = ConversionCoordinator(store: store, thumbnails: thumbnails)
     private lazy var organizer = OrganizeCoordinator(store: store, index: searchIndex)
 
-    private let hotKeyCenter = HotKeyCenter()
+    private let hotKeyCenter = HotKeyCenter(purpose: .gallery) { AppSettings.shared.galleryHotKey }
+    private let pasteHotKeyCenter = HotKeyCenter(purpose: .paste) { AppSettings.shared.pasteLatestHotKey }
+    private lazy var paster = LatestScreenshotPaster(store: store)
 
     private var searchIndex: SearchIndex?
     private var ocrIndexer: OCRIndexer?
@@ -79,6 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         organizer.cancelOrganize()
         ocrIndexer?.stop()
         hotKeyCenter.stop()
+        pasteHotKeyCenter.stop()
         Log.app.info("terminating")
     }
 
@@ -144,6 +147,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
         hotKeyCenter.start()
+
+        pasteHotKeyCenter.onTrigger = { [weak self] in
+            guard let self else { return }
+            Log.app.info("paste hotkey triggered items=\(self.store.items.count, privacy: .public)")
+            self.paster.paste()
+        }
+        pasteHotKeyCenter.start()
     }
 
     private func setupConversion() {

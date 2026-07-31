@@ -36,6 +36,8 @@ final class AppSettings {
         static let pauseIndexingOnLowPower = "pauseIndexingOnLowPower"
         static let hotKeyCode = "hotKeyCode"
         static let hotKeyModifiers = "hotKeyModifiers"
+        static let pasteHotKeyCode = "pasteHotKeyCode"
+        static let pasteHotKeyModifiers = "pasteHotKeyModifiers"
         static let webpConversionEnabled = "webpConversionEnabled"
         static let webpConversionEnabledAt = "webpConversionEnabledAt"
         static let webpDisposal = "webpDisposal"
@@ -366,6 +368,28 @@ final class AppSettings {
                 Log.settings.info("hotkey cleared")
             }
             if previous != newValue { recordChange("hotkey", newValue == nil ? "cleared" : "set") }
+            NotificationCenter.default.post(name: .sukuriniHotKeyChanged, object: self)
+        }
+    }
+
+    var pasteLatestHotKey: HotKeyBinding? {
+        get {
+            guard let code = defaults.object(forKey: Key.pasteHotKeyCode) as? Int, code >= 0 else { return nil }
+            let modifiers = defaults.object(forKey: Key.pasteHotKeyModifiers) as? Int ?? 0
+            return HotKeyBinding(keyCode: UInt32(code), carbonModifiers: UInt32(modifiers))
+        }
+        set {
+            let previous = pasteLatestHotKey
+            if let newValue {
+                defaults.set(Int(newValue.keyCode), forKey: Key.pasteHotKeyCode)
+                defaults.set(Int(newValue.carbonModifiers), forKey: Key.pasteHotKeyModifiers)
+                Log.settings.info("paste hotkey set code=\(newValue.keyCode, privacy: .public) modifiers=\(newValue.carbonModifiers, privacy: .public)")
+            } else {
+                defaults.removeObject(forKey: Key.pasteHotKeyCode)
+                defaults.removeObject(forKey: Key.pasteHotKeyModifiers)
+                Log.settings.info("paste hotkey cleared")
+            }
+            if previous != newValue { recordChange("paste_hotkey", newValue == nil ? "cleared" : "set") }
             NotificationCenter.default.post(name: .sukuriniHotKeyChanged, object: self)
         }
     }

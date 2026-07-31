@@ -6,8 +6,16 @@ extension Notification.Name {
     static let sukuriniHotKeyRegistrationChanged = Notification.Name("sukurini.hotKeyRegistrationChanged")
 }
 
+enum HotKeyPurpose: String {
+    case gallery
+    case paste
+}
+
 final class HotKeyCenter {
     static let registrationFailedKey = "failed"
+    static let registrationPurposeKey = "purpose"
+
+    let purpose: HotKeyPurpose
 
     var onTrigger: (() -> Void)?
 
@@ -57,14 +65,17 @@ final class HotKeyCenter {
     }
 
     private let identifier: UInt32
+    private let bindingProvider: () -> HotKeyBinding?
     private var hotKeyRef: EventHotKeyRef?
     private var activeBinding: HotKeyBinding?
     private var settingsObserver: NSObjectProtocol?
     private var isStarted = false
 
-    init() {
+    init(purpose: HotKeyPurpose, binding: @escaping () -> HotKeyBinding?) {
+        self.purpose = purpose
+        self.bindingProvider = binding
         identifier = HotKeyCenter.reserveIdentifier()
-        Log.system.info("hotkey center created id=\(self.identifier, privacy: .public)")
+        Log.system.info("hotkey center created id=\(self.identifier, privacy: .public) purpose=\(purpose.rawValue, privacy: .public)")
     }
 
     deinit {
@@ -145,7 +156,7 @@ final class HotKeyCenter {
             Log.system.debug("hotkey apply skipped id=\(self.identifier, privacy: .public) reason=not_started")
             return
         }
-        guard let binding = AppSettings.shared.galleryHotKey else {
+        guard let binding = bindingProvider() else {
             unregisterHotKey(reason: "not_configured")
             Log.system.info("hotkey idle id=\(self.identifier, privacy: .public) reason=\(reason, privacy: .public) state=not_configured")
             postRegistrationState(failed: false)
@@ -210,7 +221,10 @@ final class HotKeyCenter {
         NotificationCenter.default.post(
             name: .sukuriniHotKeyRegistrationChanged,
             object: self,
-            userInfo: [HotKeyCenter.registrationFailedKey: failed]
+            userInfo: [
+                HotKeyCenter.registrationFailedKey: failed,
+                HotKeyCenter.registrationPurposeKey: purpose.rawValue
+            ]
         )
     }
 

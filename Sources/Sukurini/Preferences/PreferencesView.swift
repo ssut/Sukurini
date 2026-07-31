@@ -38,9 +38,12 @@ struct PreferencesView: View {
     @State private var pauseIndexingOnLowPower = true
     @State private var ocrProgress: (done: Int, total: Int)?
     @State private var hotKey: HotKeyBinding?
-    @State private var isRecording = false
+    @State private var pasteHotKey: HotKeyBinding?
+    @State private var recordingTarget: HotKeyPurpose?
     @State private var shortcutNotice: String?
     @State private var shortcutNoticeIsError = false
+    @State private var pasteShortcutNotice: String?
+    @State private var pasteShortcutNoticeIsError = false
     @State private var recorder = HotKeyRecorder()
     @State private var selectedTab = Tab.general
     @State private var webpEnabled = false
@@ -1026,38 +1029,8 @@ struct PreferencesView: View {
 
     private var shortcutSection: some View {
         Section {
-            LabeledContent(L10n.Shortcut.toggleGallery) {
-                Text(shortcutDisplay)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(hotKey == nil ? Color.secondary : Color.primary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.secondary.opacity(isRecording ? 0.22 : 0.12))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .strokeBorder(isRecording ? Color.accentColor : Color.clear, lineWidth: 1.5)
-                    )
-            }
-            HStack(spacing: 10) {
-                Button {
-                    toggleRecording()
-                } label: {
-                    Text(recordButtonTitle)
-                        .frame(minWidth: 112)
-                }
-                Button(L10n.Common.clear) { clearShortcut() }
-                    .disabled(hotKey == nil)
-                Spacer()
-            }
-            if let shortcutNotice {
-                Text(shortcutNotice)
-                    .font(.caption)
-                    .foregroundStyle(shortcutNoticeIsError ? Color.red : Color.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            shortcutRow(.gallery, title: L10n.Shortcut.toggleGallery)
+            shortcutRow(.paste, title: L10n.Shortcut.pasteLatest)
         } header: {
             Text(L10n.Shortcut.header)
         } footer: {
@@ -1068,6 +1041,42 @@ struct PreferencesView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
+    private func shortcutRow(_ purpose: HotKeyPurpose, title: String) -> some View {
+        LabeledContent(title) {
+            Text(shortcutDisplay(purpose))
+                .font(.body.weight(.medium))
+                .foregroundStyle(storedBinding(purpose) == nil ? Color.secondary : Color.primary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.secondary.opacity(recordingTarget == purpose ? 0.22 : 0.12))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(recordingTarget == purpose ? Color.accentColor : Color.clear, lineWidth: 1.5)
+                )
+        }
+        HStack(spacing: 10) {
+            Button {
+                toggleRecording(purpose)
+            } label: {
+                Text(recordButtonTitle(purpose))
+                    .frame(minWidth: 112)
+            }
+            Button(L10n.Common.clear) { clearShortcut(purpose) }
+                .disabled(storedBinding(purpose) == nil)
+            Spacer()
+        }
+        if let notice = notice(for: purpose) {
+            Text(notice)
+                .font(.caption)
+                .foregroundStyle(noticeIsError(for: purpose) ? Color.red : Color.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -1465,97 +1474,134 @@ struct PreferencesView: View {
         return L10n.Search.indexed(done: ocrProgress.done, total: ocrProgress.total)
     }
 
-    private var shortcutDisplay: String {
-        guard let hotKey else { return isRecording ? L10n.Shortcut.pressKeys : L10n.Shortcut.notSet }
-        return HotKeyFormatter.display(hotKey)
+    private func storedBinding(_ purpose: HotKeyPurpose) -> HotKeyBinding? {
+        purpose == .gallery ? hotKey : pasteHotKey
     }
 
-    private var recordButtonTitle: String {
-        if isRecording { return L10n.Shortcut.recording }
-        return hotKey == nil ? L10n.Shortcut.record : L10n.Shortcut.change
+    private func storeBinding(_ purpose: HotKeyPurpose, _ binding: HotKeyBinding?) {
+        switch purpose {
+        case .gallery:
+            hotKey = binding
+            AppSettings.shared.galleryHotKey = binding
+        case .paste:
+            pasteHotKey = binding
+            AppSettings.shared.pasteLatestHotKey = binding
+        }
     }
 
-    private func toggleRecording() {
-        guard !recorder.isRecording else {
+    private func notice(for purpose: HotKeyPurpose) -> String? {
+        purpose == .gallery ? shortcutNotice : pasteShortcutNotice
+    }
+
+    private func noticeIsError(for purpose: HotKeyPurpose) -> Bool {
+        purpose == .gallery ? shortcutNoticeIsError : pasteShortcutNoticeIsError
+    }
+
+    private func setNotice(_ purpose: HotKeyPurpose, text: String?, isError: Bool) {
+        switch purpose {
+        case .gallery:
+            shortcutNotice = text
+            shortcutNoticeIsError = isError
+        case .paste:
+            pasteShortcutNotice = text
+            pasteShortcutNoticeIsError = isError
+        }
+    }
+
+    private func shortcutDisplay(_ purpose: HotKeyPurpose) -> String {
+        guard let binding = storedBinding(purpose) else {
+            return recordingTarget == purpose ? L10n.Shortcut.pressKeys : L10n.Shortcut.notSet
+        }
+        return HotKeyFormatter.display(binding)
+    }
+
+    private func recordButtonTitle(_ purpose: HotKeyPurpose) -> String {
+        if recordingTarget == purpose { return L10n.Shortcut.recording }
+        return storedBinding(purpose) == nil ? L10n.Shortcut.record : L10n.Shortcut.change
+    }
+
+    private func toggleRecording(_ purpose: HotKeyPurpose) {
+        guard recordingTarget != purpose else {
             stopRecording(reason: "toggle")
-            shortcutNoticeIsError = false
-            shortcutNotice = nil
+            setNotice(purpose, text: nil, isError: false)
             return
         }
-        startRecording()
+        startRecording(purpose)
     }
 
-    private func startRecording() {
-        shortcutNoticeIsError = false
-        shortcutNotice = nil
-        isRecording = true
-        Log.settings.info("preferences shortcut recording started current=\(self.hotKey.map { HotKeyFormatter.display($0) } ?? "none", privacy: .public)")
-        recorder.start { outcome in handleRecording(outcome) }
+    private func startRecording(_ purpose: HotKeyPurpose) {
+        stopRecording(reason: "switch")
+        setNotice(purpose, text: nil, isError: false)
+        recordingTarget = purpose
+        Log.settings.info("preferences shortcut recording started purpose=\(purpose.rawValue, privacy: .public) current=\(self.storedBinding(purpose).map { HotKeyFormatter.display($0) } ?? "none", privacy: .public)")
+        recorder.start { outcome in handleRecording(purpose, outcome) }
     }
 
     private func stopRecording(reason: String) {
+        recordingTarget = nil
         guard recorder.isRecording else { return }
         recorder.stop(reason: reason)
-        isRecording = false
     }
 
     private func handleWindowClose(_ note: Notification) {
         guard let window = note.object as? NSWindow else { return }
         guard window.identifier?.rawValue == "sukurini.preferences" else { return }
         guard recorder.isRecording else { return }
+        let target = recordingTarget
         stopRecording(reason: "window_closed")
-        shortcutNoticeIsError = false
-        shortcutNotice = nil
+        if let target { setNotice(target, text: nil, isError: false) }
         Log.settings.info("preferences shortcut recording stopped by window close")
     }
 
-    private func handleRecording(_ outcome: HotKeyRecorder.Outcome) {
+    private func handleRecording(_ purpose: HotKeyPurpose, _ outcome: HotKeyRecorder.Outcome) {
         switch outcome {
         case .ignored:
             return
         case .cancelled:
             stopRecording(reason: "cancelled")
-            shortcutNoticeIsError = false
-            shortcutNotice = L10n.Shortcut.cancelled
-            Log.settings.info("preferences shortcut recording cancelled")
+            setNotice(purpose, text: L10n.Shortcut.cancelled, isError: false)
+            Log.settings.info("preferences shortcut recording cancelled purpose=\(purpose.rawValue, privacy: .public)")
         case .rejected(let reason):
-            shortcutNoticeIsError = true
-            shortcutNotice = reason
-            Log.settings.info("preferences shortcut rejected reason=missing_modifiers")
+            setNotice(purpose, text: reason, isError: true)
+            Log.settings.info("preferences shortcut rejected purpose=\(purpose.rawValue, privacy: .public) reason=missing_modifiers")
         case .captured(let binding):
+            let other: HotKeyPurpose = purpose == .gallery ? .paste : .gallery
+            guard binding != storedBinding(other) else {
+                stopRecording(reason: "duplicate")
+                setNotice(purpose, text: L10n.Shortcut.inUseByOther, isError: true)
+                Log.settings.info("preferences shortcut rejected purpose=\(purpose.rawValue, privacy: .public) reason=duplicate_binding")
+                return
+            }
             stopRecording(reason: "captured")
-            shortcutNoticeIsError = false
-            shortcutNotice = nil
-            hotKey = binding
-            AppSettings.shared.galleryHotKey = binding
-            Log.settings.info("preferences shortcut captured value=\(HotKeyFormatter.display(binding), privacy: .public) code=\(binding.keyCode, privacy: .public) modifiers=\(binding.carbonModifiers, privacy: .public)")
+            setNotice(purpose, text: nil, isError: false)
+            storeBinding(purpose, binding)
+            Log.settings.info("preferences shortcut captured purpose=\(purpose.rawValue, privacy: .public) value=\(HotKeyFormatter.display(binding), privacy: .public) code=\(binding.keyCode, privacy: .public) modifiers=\(binding.carbonModifiers, privacy: .public)")
         }
     }
 
-    private func clearShortcut() {
+    private func clearShortcut(_ purpose: HotKeyPurpose) {
         stopRecording(reason: "cleared")
-        shortcutNoticeIsError = false
-        shortcutNotice = nil
-        hotKey = nil
-        AppSettings.shared.galleryHotKey = nil
-        Log.settings.info("preferences shortcut cleared")
+        setNotice(purpose, text: nil, isError: false)
+        storeBinding(purpose, nil)
+        Log.settings.info("preferences shortcut cleared purpose=\(purpose.rawValue, privacy: .public)")
     }
 
     private func applyRegistrationState(_ note: Notification) {
         let failed = note.userInfo?[HotKeyCenter.registrationFailedKey] as? Bool ?? false
+        let raw = note.userInfo?[HotKeyCenter.registrationPurposeKey] as? String
+        let purpose = raw.flatMap(HotKeyPurpose.init(rawValue:)) ?? .gallery
         if failed {
-            shortcutNoticeIsError = true
-            shortcutNotice = L10n.Shortcut.conflict
-        } else if shortcutNoticeIsError {
-            shortcutNoticeIsError = false
-            shortcutNotice = nil
+            setNotice(purpose, text: L10n.Shortcut.conflict, isError: true)
+        } else if noticeIsError(for: purpose) {
+            setNotice(purpose, text: nil, isError: false)
         }
-        Log.settings.info("preferences shortcut registration failed=\(failed, privacy: .public)")
+        Log.settings.info("preferences shortcut registration purpose=\(purpose.rawValue, privacy: .public) failed=\(failed, privacy: .public)")
     }
 
     private func reloadHotKey() {
         hotKey = AppSettings.shared.galleryHotKey
-        Log.settings.debug("preferences hotkey synced value=\(self.hotKey.map { HotKeyFormatter.display($0) } ?? "none", privacy: .public)")
+        pasteHotKey = AppSettings.shared.pasteLatestHotKey
+        Log.settings.debug("preferences hotkey synced gallery=\(self.hotKey.map { HotKeyFormatter.display($0) } ?? "none", privacy: .public) paste=\(self.pasteHotKey.map { HotKeyFormatter.display($0) } ?? "none", privacy: .public)")
     }
 
     private func reloadAll() {
@@ -1586,6 +1632,7 @@ struct PreferencesView: View {
         organizeNotice = nil
         captureNotice = nil
         shortcutNotice = nil
+        pasteShortcutNotice = nil
         thumbnailNotice = nil
         Log.settings.info("preferences relocalized language=\(LocalizationCenter.shared.language.rawValue, privacy: .public)")
     }

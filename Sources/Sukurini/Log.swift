@@ -9,6 +9,7 @@ enum Log {
     static let watcher = Logger(subsystem: subsystem, category: "watcher")
     static let statusItem = Logger(subsystem: subsystem, category: "statusItem")
     static let drag = Logger(subsystem: subsystem, category: "drag")
+    static let paste = Logger(subsystem: subsystem, category: "paste")
     static let gallery = Logger(subsystem: subsystem, category: "gallery")
     static let thumbnail = Logger(subsystem: subsystem, category: "thumbnail")
     static let settings = Logger(subsystem: subsystem, category: "settings")

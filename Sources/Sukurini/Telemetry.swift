@@ -187,7 +187,8 @@ enum Telemetry {
             "webp": flag(settings.webpConversionEnabled),
             "organize": flag(settings.organizeEnabled),
             "dock": flag(settings.alwaysShowInDock),
-            "hotkey": flag(settings.galleryHotKey != nil)
+            "hotkey": flag(settings.galleryHotKey != nil),
+            "paste_hotkey": flag(settings.pasteLatestHotKey != nil)
         ])
     }
 

@@ -200,6 +200,13 @@ extension L10n {
         static var toggleGallery: String {
             tr(en: "Show or hide the gallery", ko: "갤러리 열고 닫기", ja: "ギャラリーの表示・非表示")
         }
+        static var pasteLatest: String {
+            tr(
+                en: "Paste the latest screenshot",
+                ko: "최근 스크린샷 붙여넣기",
+                ja: "最新のスクリーンショットをペースト"
+            )
+        }
         static var notSet: String { tr(en: "Not set", ko: "설정 안 됨", ja: "未設定") }
         static var pressKeys: String { tr(en: "Press keys", ko: "키를 눌러 주세요", ja: "キーを押してください") }
         static var recording: String { tr(en: "Press keys…", ko: "키 입력 중…", ja: "キー入力中…") }
@@ -228,11 +235,44 @@ extension L10n {
                 ja: "ほかのアプリがすでに使っているかもしれません。"
             )
         }
+        static var inUseByOther: String {
+            tr(
+                en: "Already used by the other shortcut.",
+                ko: "다른 단축키에 이미 지정돼 있어요.",
+                ja: "もう一方のショートカットで使われています。"
+            )
+        }
         static var needsModifier: String {
             tr(
                 en: "Hold at least one of ⌃ ⌥ ⌘ while pressing a key.",
                 ko: "⌃ ⌥ ⌘ 가운데 하나는 같이 눌러 주세요.",
                 ja: "⌃ ⌥ ⌘ のどれかを一緒に押してください。"
+            )
+        }
+    }
+}
+
+extension L10n {
+    enum Paste {
+        static var permissionTitle: String {
+            tr(
+                en: "Accessibility permission needed",
+                ko: "손쉬운 사용 권한이 필요해요",
+                ja: "アクセシビリティの権限が必要です"
+            )
+        }
+        static var permissionBody: String {
+            tr(
+                en: "To paste the latest screenshot, Sukurini presses ⌘V in the app you're using. macOS allows that only with the Accessibility permission.\n\nIn System Settings → Privacy & Security → Accessibility, turn on Sukurini, then press the shortcut again.",
+                ko: "최근 스크린샷을 붙여넣으려면 Sukurini가 지금 쓰는 앱에 ⌘V를 대신 눌러야 해요. macOS에서는 손쉬운 사용 권한이 있어야만 할 수 있어요.\n\n시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용에서 Sukurini를 켠 다음, 단축키를 다시 눌러 주세요.",
+                ja: "最新のスクリーンショットをペーストするには、Sukurini がいま使っているアプリで ⌘V を代わりに押します。macOS ではアクセシビリティの権限がないとできません。\n\nシステム設定 → プライバシーとセキュリティ → アクセシビリティで Sukurini をオンにして、もう一度ショートカットを押してください。"
+            )
+        }
+        static var openSettings: String {
+            tr(
+                en: "Open System Settings",
+                ko: "시스템 설정 열기",
+                ja: "システム設定を開く"
             )
         }
     }
