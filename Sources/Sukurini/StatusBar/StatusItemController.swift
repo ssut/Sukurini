@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import StatusItemDragSupport
 
 protocol StatusItemControllerDelegate: AnyObject {
     func statusItemToggleGallery(wasVisibleAtPress: Bool, statusButton: NSStatusBarButton?)
@@ -9,9 +10,9 @@ protocol StatusItemControllerDelegate: AnyObject {
 
 final class StatusItemController: NSObject {
     enum Metrics {
-        static let dragThreshold: CGFloat = 4
         static let dragThumbnailPixel: Int = ThumbnailLoader.dragThumbnailPixel
         static let dragImageMaxSide: CGFloat = 96
+        static let postDragClickSuppression: TimeInterval = 0.4
     }
 
     private struct DragPayload {
@@ -32,6 +33,16 @@ final class StatusItemController: NSObject {
     private let thumbnails: ThumbnailLoader
     private var statusItem: NSStatusItem?
     private var icon: StatusIconAnimator?
+    private var clickGesture: StatusItemClickGestureRecognizer?
+    private var menuGesture: StatusItemClickGestureRecognizer?
+    private var dragGesture: StatusItemPanGestureRecognizer?
+    private var mouseGesture: StatusItemMouseGestureRecognizer?
+    private var mouseDragWindow: StatusItemDragWindow?
+    private var mouseDragSession: NSDraggingSession?
+    private var mouseDragPump: StatusItemDragEventPump?
+    private var lastDragEndedAt: TimeInterval?
+    private var dragMovementLogged = false
+    private var dragStartPoint = NSPoint.zero
     private var presentedMenu: NSMenu?
     private weak var previousMenuDelegate: NSMenuDelegate?
 
@@ -42,6 +53,8 @@ final class StatusItemController: NSObject {
     }
 
     deinit {
+        mouseDragPump?.stop(reason: "controller_deinit")
+        mouseDragWindow?.close()
         if let item = statusItem {
             NSStatusBar.system.removeStatusItem(item)
         }
@@ -70,7 +83,8 @@ final class StatusItemController: NSObject {
         button.toolTip = "Sukurini"
         button.target = self
         button.action = #selector(statusButtonAction(_:))
-        _ = button.sendAction(on: [.leftMouseDown, .rightMouseDown])
+        _ = button.sendAction(on: [.leftMouseUp])
+        installGestures(on: button)
 
         store.addObserver { [weak self] _ in self?.warmDragAssets() }
         warmDragAssets()
@@ -93,71 +107,123 @@ final class StatusItemController: NSObject {
         icon.activate()
     }
 
-    @objc private func statusButtonAction(_ sender: Any?) {
-        guard let button = statusItem?.button else {
-            Log.statusItem.error("click ignored reason=no_button")
-            return
+    private func installGestures(on button: NSStatusBarButton) {
+        if #available(macOS 27.0, *) {
+            let mouse = StatusItemMouseGestureRecognizer(target: self, action: #selector(statusItemMouseChanged(_:)))
+            mouse.allowedTouchTypes = []
+            mouse.delaysPrimaryMouseButtonEvents = true
+            mouse.delegate = self
+            mouse.screenshotAtPress = { [weak self] in self?.store.validatedLatest() }
+            mouse.galleryVisibility = { [weak self] in self?.delegate?.statusItemIsGalleryVisible() ?? false }
+            mouseGesture = mouse
+            button.addGestureRecognizer(mouse)
         }
-        let event = NSApp.currentEvent
-        let flags = event?.modifierFlags.intersection(.deviceIndependentFlagsMask) ?? []
-        let wantsMenu = event?.type == .rightMouseDown || flags.contains(.control)
-        let typeName = StatusItemController.describe(event?.type)
-        Log.statusItem.info("button action type=\(typeName, privacy: .public) wantsMenu=\(wantsMenu, privacy: .public)")
 
-        if wantsMenu {
-            presentMenu(from: button)
-            return
-        }
-        guard let event, event.type == .leftMouseDown else {
-            completeClick(wasVisibleAtPress: delegate?.statusItemIsGalleryVisible() ?? false, button: button)
-            return
-        }
-        trackLeftMouse(from: event, button: button)
+        let drag = StatusItemPanGestureRecognizer(target: self, action: #selector(statusItemDragged(_:)))
+        drag.buttonMask = 0x1
+        drag.delaysPrimaryMouseButtonEvents = true
+        drag.delegate = self
+        drag.screenshotAtPress = { [weak self] in self?.store.validatedLatest() }
+        dragGesture = drag
+        button.addGestureRecognizer(drag)
+
+        let click = StatusItemClickGestureRecognizer(target: self, action: #selector(statusItemClicked(_:)))
+        click.buttonMask = 0x1
+        click.delaysPrimaryMouseButtonEvents = true
+        click.delegate = self
+        click.galleryVisibility = { [weak self] in self?.delegate?.statusItemIsGalleryVisible() ?? false }
+        clickGesture = click
+        button.addGestureRecognizer(click)
+
+        let menu = StatusItemClickGestureRecognizer(target: self, action: #selector(statusItemMenuClicked(_:)))
+        menu.buttonMask = 0x2
+        menu.allowedTouchTypes = []
+        menu.delaysSecondaryMouseButtonEvents = true
+        menu.delegate = self
+        menuGesture = menu
+        button.addGestureRecognizer(menu)
+        Log.statusItem.info("input installed mode=gestures physicalMouseTracking=\(self.mouseGesture != nil, privacy: .public)")
     }
 
-    private func trackLeftMouse(from event: NSEvent, button: NSStatusBarButton) {
-        let wasVisibleAtPress = delegate?.statusItemIsGalleryVisible() ?? false
-        let payload = store.validatedLatest().map { prepareDragPayload(for: $0) }
-        if payload == nil {
-            Log.drag.info("drag payload unavailable reason=no_screenshot")
-        }
-
-        guard let window = button.window else {
-            Log.statusItem.error("tracking aborted reason=no_window")
-            completeClick(wasVisibleAtPress: wasVisibleAtPress, button: button)
+    @objc private func statusButtonAction(_ sender: Any?) {
+        guard presentedMenu == nil, mouseDragWindow == nil, let button = statusItem?.button else { return }
+        guard !isSuppressingPostDragClick else {
+            Log.statusItem.info("button activation ignored reason=post_drag_click")
             return
         }
-
-        let origin = event.locationInWindow
-        var travelled: CGFloat = 0
-        var crossedThreshold = false
-        var forcesPNG = false
-        var samples = 0
-        while let next = window.nextEvent(matching: [.leftMouseUp, .leftMouseDragged]) {
-            if next.type == .leftMouseUp {
-                break
-            }
-            samples += 1
-            let dx = next.locationInWindow.x - origin.x
-            let dy = next.locationInWindow.y - origin.y
-            travelled = (dx * dx + dy * dy).squareRoot()
-            if travelled >= Metrics.dragThreshold {
-                crossedThreshold = true
-                forcesPNG = next.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.option)
-                break
-            }
-        }
-        Log.statusItem.info("tracking finished drag=\(crossedThreshold, privacy: .public) travelled=\(Int(travelled), privacy: .public) samples=\(samples, privacy: .public) forcesPNG=\(forcesPNG, privacy: .public)")
-
-        guard crossedThreshold else {
-            completeClick(wasVisibleAtPress: wasVisibleAtPress, button: button)
+        if let mouseGesture, mouseGesture.state == .began || mouseGesture.state == .changed {
+            Log.statusItem.info("button activation ignored reason=physical_press_active")
             return
         }
-        guard let payload else {
+        Log.statusItem.info("button activation source=native")
+        completeClick(wasVisibleAtPress: delegate?.statusItemIsGalleryVisible() ?? false, button: button)
+    }
+
+    @objc private func statusItemClicked(_ gesture: StatusItemClickGestureRecognizer) {
+        guard gesture.state == .ended, let button = statusItem?.button else { return }
+        let flags: NSEvent.ModifierFlags
+        if #available(macOS 26.0, *) {
+            flags = gesture.modifierFlags
+        } else {
+            flags = gesture.pressModifierFlags
+        }
+        if flags.union(gesture.pressModifierFlags).contains(.control) {
+            presentMenu(from: button)
+        } else {
+            completeClick(wasVisibleAtPress: gesture.wasGalleryVisibleAtPress, button: button)
+        }
+    }
+
+    @objc private func statusItemMenuClicked(_ gesture: StatusItemClickGestureRecognizer) {
+        guard gesture.state == .ended, let button = statusItem?.button else { return }
+        presentMenu(from: button)
+    }
+
+    @objc private func statusItemDragged(_ gesture: StatusItemPanGestureRecognizer) {
+        Log.statusItem.debug("pan action state=\(gesture.state.rawValue, privacy: .public)")
+        guard gesture.state == .began, let button = statusItem?.button else { return }
+        guard let screenshot = gesture.screenshot else {
             Log.drag.info("drag not started reason=no_screenshot")
             return
         }
-        beginDrag(payload: payload, event: event, button: button, forcesPNG: forcesPNG)
+        guard FileManager.default.fileExists(atPath: screenshot.path) else {
+            Log.drag.info("drag not started reason=screenshot_removed")
+            return
+        }
+        let flags: NSEvent.ModifierFlags
+        if #available(macOS 26.0, *) {
+            flags = gesture.modifierFlags
+        } else {
+            flags = gesture.mouseEvent?.modifierFlags ?? []
+        }
+        let payload = prepareDragPayload(for: screenshot)
+        beginDrag(payload: payload, gesture: gesture, button: button, forcesPNG: flags.contains(.option))
+    }
+
+    @objc private func statusItemMouseChanged(_ gesture: StatusItemMouseGestureRecognizer) {
+        guard let button = statusItem?.button else { return }
+        if gesture.state == .ended, !gesture.didCrossDragThreshold {
+            if gesture.currentModifiers.contains(.control) {
+                presentMenu(from: button)
+            } else {
+                completeClick(wasVisibleAtPress: gesture.wasGalleryVisibleAtPress, button: button)
+            }
+            return
+        }
+        guard gesture.takeDragRequest() else { return }
+        var sessionStarted = false
+        defer { if !sessionStarted { gesture.finishDragAttempt() } }
+        guard let screenshot = gesture.screenshot else {
+            Log.drag.info("drag not started reason=no_screenshot source=physical_press")
+            return
+        }
+        guard FileManager.default.fileExists(atPath: screenshot.path) else {
+            Log.drag.info("drag not started reason=screenshot_removed source=physical_press")
+            return
+        }
+        let forcesPNG = gesture.currentModifiers.contains(.option)
+        let payload = prepareDragPayload(for: screenshot)
+        sessionStarted = beginDrag(payload: payload, gesture: gesture, button: button, forcesPNG: forcesPNG)
     }
 
     private func completeClick(wasVisibleAtPress: Bool, button: NSStatusBarButton) {
@@ -192,8 +258,11 @@ final class StatusItemController: NSObject {
         return payload
     }
 
-    private func beginDrag(payload: DragPayload, event: NSEvent, button: NSStatusBarButton, forcesPNG: Bool) {
-        icon?.clear(reason: "dragged")
+    @discardableResult
+    private func beginDrag(payload: DragPayload, gesture: NSGestureRecognizer, button: NSStatusBarButton, forcesPNG: Bool) -> Bool {
+        if let mouse = gesture as? StatusItemMouseGestureRecognizer {
+            return beginPhysicalMouseDrag(payload: payload, gesture: mouse, forcesPNG: forcesPNG)
+        }
         let writer = PNGExporter.shared.pasteboardWriter(for: payload.url, forcingPNG: forcesPNG)
         let item = NSDraggingItem(pasteboardWriter: writer)
         let frame = NSRect(
@@ -204,10 +273,82 @@ final class StatusItemController: NSObject {
         )
         item.setDraggingFrame(frame, contents: payload.image)
 
-        let session = button.beginDraggingSession(with: [item], event: event, source: self)
+        let session: NSDraggingSession
+        if #available(macOS 27.0, *) {
+            guard let started = SukuriniBeginGestureDraggingSession(button, [item], gesture, self) else {
+                Log.drag.error("drag not started reason=gesture_session_rejected")
+                return false
+            }
+            session = started
+        } else {
+            guard let event = (gesture as? StatusItemPanGestureRecognizer)?.mouseEvent else {
+                Log.drag.error("drag not started reason=no_mouse_event")
+                return false
+            }
+            session = button.beginDraggingSession(with: [item], event: event, source: self)
+        }
+        icon?.clear(reason: "dragged")
         session.animatesToStartingPositionsOnCancelOrFail = true
         session.draggingFormation = .none
         Log.drag.info("drag session started file=\(payload.name, privacy: .public) cached=\(payload.cached, privacy: .public) forcesPNG=\(forcesPNG, privacy: .public) png=\(writer is NSPasteboardItem, privacy: .public)")
+        return true
+    }
+
+    private func beginPhysicalMouseDrag(payload: DragPayload, gesture: StatusItemMouseGestureRecognizer, forcesPNG: Bool) -> Bool {
+        guard mouseDragWindow == nil else {
+            Log.drag.info("drag not started reason=session_active")
+            return false
+        }
+        let pointer = gesture.pointerSample()
+        guard pointer.isPressed else { return false }
+        let window = StatusItemDragWindow(pointer: pointer.location, previewSize: payload.size)
+        window.orderFrontRegardless()
+        guard let view = window.contentView, let event = gesture.dragEvent(in: window) else {
+            window.close()
+            Log.drag.info("drag not started reason=physical_press_ended_or_missing_event")
+            return false
+        }
+        let writer = PNGExporter.shared.pasteboardWriter(for: payload.url, forcingPNG: forcesPNG)
+        let item = NSDraggingItem(pasteboardWriter: writer)
+        item.setDraggingFrame(NSRect(origin: .zero, size: payload.size), contents: payload.image)
+        mouseDragWindow = window
+        gesture.finishDragAttempt()
+        DispatchQueue.main.async { [weak self, window, view] in
+            guard let self, self.mouseDragWindow === window else { return }
+            guard NSEvent.pressedMouseButtons & 1 != 0 else {
+                self.closeMouseDragWindow()
+                Log.drag.info("drag not started reason=released_before_native_handoff")
+                return
+            }
+            Log.drag.info("drag session requested api=mouse_event source=native_window event=\(event.eventNumber, privacy: .public) window=\(window.windowNumber, privacy: .public)")
+            let session = view.beginDraggingSession(with: [item], event: event, source: self)
+            if self.mouseDragWindow === window { self.mouseDragSession = session }
+            session.animatesToStartingPositionsOnCancelOrFail = true
+            session.draggingFormation = .none
+            let pump = StatusItemDragEventPump(
+                window: window,
+                eventNumber: event.eventNumber,
+                origin: window.convertPoint(toScreen: event.locationInWindow)
+            )
+            self.mouseDragPump = pump
+            pump.start()
+            self.icon?.clear(reason: "dragged")
+            Log.drag.info("drag session started file=\(payload.name, privacy: .public) cached=\(payload.cached, privacy: .public) forcesPNG=\(forcesPNG, privacy: .public) source=native_window")
+        }
+        return true
+    }
+
+    private var isSuppressingPostDragClick: Bool {
+        guard let lastDragEndedAt else { return false }
+        return ProcessInfo.processInfo.systemUptime - lastDragEndedAt < Metrics.postDragClickSuppression
+    }
+
+    private func closeMouseDragWindow() {
+        mouseDragPump?.stop(reason: "session_closed")
+        mouseDragPump = nil
+        mouseDragWindow?.close()
+        mouseDragWindow = nil
+        mouseDragSession = nil
     }
 
     private func presentMenu(from button: NSStatusBarButton) {
@@ -256,17 +397,53 @@ final class StatusItemController: NSObject {
             height: max(1, (source.height * ratio).rounded())
         )
     }
+}
 
-    private static func describe(_ type: NSEvent.EventType?) -> String {
-        guard let type else { return "none" }
-        switch type {
-        case .leftMouseDown: return "leftMouseDown"
-        case .leftMouseUp: return "leftMouseUp"
-        case .rightMouseDown: return "rightMouseDown"
-        case .rightMouseUp: return "rightMouseUp"
-        case .otherMouseDown: return "otherMouseDown"
-        default: return "raw\(type.rawValue)"
+extension StatusItemController: NSGestureRecognizerDelegate {
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: NSGestureRecognizer) -> Bool {
+        guard gestureRecognizer === dragGesture else { return true }
+        if #available(macOS 26.0, *) {
+            return gestureRecognizer.modifierFlags.intersection([.command, .control]).isEmpty
         }
+        return true
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: NSGestureRecognizer, shouldReceive touch: NSTouch) -> Bool {
+        guard presentedMenu == nil, mouseDragWindow == nil else { return false }
+        (gestureRecognizer as? StatusItemClickGestureRecognizer)?.captureTouchPress()
+        (gestureRecognizer as? StatusItemPanGestureRecognizer)?.captureTouchPress()
+        return true
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: NSGestureRecognizer, shouldAttemptToRecognizeWith event: NSEvent) -> Bool {
+        Log.statusItem.debug("gesture admission kind=\(String(describing: type(of: gestureRecognizer)), privacy: .public) type=\(event.type.rawValue, privacy: .public) flags=\(event.modifierFlags.rawValue, privacy: .public)")
+        guard presentedMenu == nil, mouseDragWindow == nil else { return false }
+        guard !isSuppressingPostDragClick else {
+            Log.statusItem.info("gesture admission rejected reason=post_drag_click")
+            return false
+        }
+        if event.modifierFlags.contains(.command) { return false }
+        if let mouseGesture {
+            let tracksPhysicalPress = mouseGesture.canTrack(event)
+            if gestureRecognizer === mouseGesture { return tracksPhysicalPress }
+            if tracksPhysicalPress { return false }
+        }
+        if gestureRecognizer === dragGesture {
+            return !event.modifierFlags.contains(.control)
+        }
+        return true
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: NSGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: NSGestureRecognizer) -> Bool {
+        gestureRecognizer === clickGesture && otherGestureRecognizer === dragGesture
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: NSGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: NSGestureRecognizer) -> Bool {
+        guard otherGestureRecognizer !== clickGesture,
+              otherGestureRecognizer !== menuGesture,
+              otherGestureRecognizer !== dragGesture,
+              otherGestureRecognizer !== mouseGesture else { return false }
+        return otherGestureRecognizer.view === statusItem?.button
     }
 }
 
@@ -305,11 +482,25 @@ extension StatusItemController: NSDraggingSource {
 
     func draggingSession(_ session: NSDraggingSession, willBeginAt screenPoint: NSPoint) {
         store.setDragHold(true)
+        dragMovementLogged = false
+        dragStartPoint = screenPoint
         Log.drag.info("drag will begin x=\(Int(screenPoint.x), privacy: .public) y=\(Int(screenPoint.y), privacy: .public)")
+    }
+
+    func draggingSession(_ session: NSDraggingSession, movedTo screenPoint: NSPoint) {
+        guard !dragMovementLogged, screenPoint != dragStartPoint else { return }
+        dragMovementLogged = true
+        Log.drag.info("drag moved x=\(Int(screenPoint.x), privacy: .public) y=\(Int(screenPoint.y), privacy: .public)")
     }
 
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         store.setDragHold(false)
+        if mouseDragSession == nil || mouseDragSession === session {
+            if mouseDragWindow != nil {
+                lastDragEndedAt = ProcessInfo.processInfo.systemUptime
+            }
+            closeMouseDragWindow()
+        }
         Log.drag.info("drag ended operation=\(operation.rawValue, privacy: .public) copy=\(operation.contains(.copy), privacy: .public)")
         guard !operation.isEmpty else { return }
         Telemetry.log(.screenshotCopied, ["source": "menu_bar", "method": "drag"])
