@@ -2,6 +2,11 @@
 
 Generated from the commit history on every release.
 
+## 1.3.0 — 2026-09-18
+
+### Fixed
+- **Statusbar** — Restore menu bar screenshot dragging on macOS 27
+
 ## 1.2.0 — 2026-07-31
 
 ### Added
