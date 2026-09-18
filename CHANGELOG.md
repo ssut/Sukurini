@@ -2,6 +2,11 @@
 
 Generated from the commit history on every release.
 
+## 1.2.0 — 2026-07-31
+
+### Added
+- **Shortcut** — Paste the latest screenshot without touching the clipboard
+
 ## 1.1.0 — 2026-07-29
 
 ### Added
