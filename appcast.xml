@@ -6,6 +6,17 @@
     <description>Most recent updates to Sukurini</description>
     <language>en</language>
     <item>
+      <title>1.3.0</title>
+      <pubDate>Fri, 18 Sep 2026 02:53:28 +0000</pubDate>
+      <sparkle:version>9</sparkle:version>
+      <sparkle:shortVersionString>1.3.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description sparkle:format="markdown">### Fixed
+- **Statusbar** — Restore menu bar screenshot dragging on macOS 27</description>
+      <sparkle:fullReleaseNotesLink>https://github.com/ssut/Sukurini/releases</sparkle:fullReleaseNotesLink>
+      <enclosure url="https://github.com/ssut/Sukurini/releases/download/v1.3.0/Sukurini-1.3.0.dmg" length="4237271" type="application/octet-stream" sparkle:edSignature="fXN3kRYHBHjjpj1EJZRNNgExTj8fyJwGL3Ij2zGXq5CwQaHuVp+luRo+bGdg+oehfElDx6cIOWkDAbqxzFP8AA==" />
+    </item>
+    <item>
       <title>1.2.0</title>
       <pubDate>Fri, 31 Jul 2026 05:17:19 +0000</pubDate>
       <sparkle:version>8</sparkle:version>
