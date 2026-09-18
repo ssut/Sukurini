@@ -10,9 +10,15 @@ let package = Package(
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.4")
     ],
     targets: [
+        .target(
+            name: "StatusItemDragSupport",
+            path: "Sources/StatusItemDragSupport",
+            publicHeadersPath: "include"
+        ),
         .executableTarget(
             name: "Sukurini",
             dependencies: [
+                "StatusItemDragSupport",
                 .product(name: "FirebaseAnalytics", package: "firebase-ios-sdk"),
                 .product(name: "FirebaseCrashlytics", package: "firebase-ios-sdk"),
                 .product(name: "libwebp", package: "libwebp-Xcode"),
@@ -23,6 +29,11 @@ let package = Package(
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])
             ]
+        ),
+        .testTarget(
+            name: "SukuriniTests",
+            dependencies: ["Sukurini"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
         )
     ]
 )
